@@ -132,3 +132,29 @@ SITE-A # exec ping google.com
 PING google.com (142.251.34.206): 56 data bytes
 64 bytes from 142.251.34.206: icmp_seq=0 ttl=117 time=13.4 ms
 SITE-B # exec ping google.com
+
+¿Por qué pasa esto si aún no hemos configurado? (laboratorio)se debe a que el puerto 1 tiene configuración DHCP
+
+Para ello vamos a ingresar vía web a uno de los forti y nos vamos a Network-> Interfaces y vermos que ahí está tomando la DNS configurado en nuestro router, entonces tenemos que deshabilitar la opción que dice Rerieve default gateway from server y la que dice override Internal DNS, 
+![18](19.png)
+
+Ahora si volver hacer ping ya no nos permitira hacer ping y está bien porqué el puerto uno es para la configuración y administración.
+
+admin@192.168.1.170's password:
+SITE-A # exec ping google.com
+Unable to resolve hostname.
+
+SITE-A #
+
+Ahora vamos a ingresar a configurar la zona horaria a través de la interfaz gráfica:
+System->Settings 
+
+En esta misma sección tenemos que darle el máximo tiempo de conexión antes de que se cierre la sesión que es de 480 minutos(solo se aplica en laboratorio)
+
+Idle timeout : 480
+
+Auto file system check: check
+(esto en caso de que se apague mal el equipo)
+
+
+
