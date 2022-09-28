@@ -156,5 +156,756 @@ Idle timeout : 480
 Auto file system check: check
 (esto en caso de que se apague mal el equipo)
 
+Ahora vamos hacer una pequeña revisión:
+![19](20.png)
+
+¿Que és un dashboard?
+Colección de widget, encontraremos información del sistema, estado de licencias
+¿Qué es un monitor?
+nos muestra tráfico o destino, cosas que el forti está procesando o preceso, es como ver un widget
+
+En el menú en la parte de NEtwork: no serán vistas en el curso debido a que no es el scope del curso, ya que no se toman en cuentan las certificaciones.
+RIP,OSPF,BGP,Routing Objets, Multicas
+
+Vamos a empezar poniendo una IP fija a nuestros dos dispositivos forti
+
+1.- Forma web
+Una vez ingresando a nuestro dispositivo vamos a network->interfaces->Port1->seleccionamos la opción manual y le ponemos la ip que deseamos.
+
+![20](21.png)
+
+Dejaré los mismos que me dió por default y click en ok
+
+![21](22.png)
+
+2.- Ahora a través de la consola con el comando set ip 192.168.1.6/24
+```
+edit port
+set mode static
+show
+set ip ip/ip mask
+show
+end
+```
+```
+SITE-B (interface) # edit port1
+
+SITE-B (port1) # show
+config system interface
+    edit "port1"
+        set vdom "root"
+        set mode dhcp
+        set allowaccess ping https ssh http fgfm
+        set type physical
+        set snmp-index 1
+        config ipv6
+            set ip6-send-adv enable
+            set ip6-other-flag enable
+        end
+        set defaultgw disable
+        set dns-server-override disable
+    next
+end
+
+SITE-B (port1) # set mode static
+
+SITE-B (port1) # show
+config system interface
+    edit "port1"
+        set vdom "root"
+        set ip 192.168.1.172 255.255.255.0
+        set allowaccess ping https ssh http fgfm
+        set type physical
+        set snmp-index 1
+        config ipv6
+            set ip6-send-adv enable
+            set ip6-other-flag enable
+        end
+        set dns-server-override disable
+    next
+end
+
+SITE-B (port1) # set ip 192.168.1.6
+
+incomplete command in the end
+Command fail. Return code -160
+
+SITE-B (port1) # set ip 192.168.1.6/24
+
+SITE-B (port1) # show
+config system interface
+    edit "port1"
+        set vdom "root"
+        set ip 192.168.1.6 255.255.255.0
+        set allowaccess ping https ssh http fgfm
+        set type physical
+        set snmp-index 1
+        config ipv6
+            set ip6-send-adv enable
+            set ip6-other-flag enable
+        end
+        set dns-server-override disable
+    next
+end
+
+SITE-B (port1) #
+```
+
+Con get system status, revisamos cuando vencen las licencias.
+
+```
+
+SITE-A # get system status
+Version: FortiGate-VM64-KVM v7.0.3,build0237,211207 (GA)
+Virus-DB: 1.00000(2018-04-09 18:07)
+Extended DB: 1.00000(2018-04-09 18:07)
+Extreme DB: 1.00000(2018-04-09 18:07)
+AV AI/ML Model: 0.00000(2001-01-01 00:00)
+IPS-DB: 6.00741(2015-12-01 02:30)
+IPS-ETDB: 6.00741(2015-12-01 02:30)
+APP-DB: 6.00741(2015-12-01 02:30)
+INDUSTRIAL-DB: 6.00741(2015-12-01 02:30)
+IPS Malicious URL Database: 1.00001(2015-01-01 01:01)
+Serial-Number: FGVMEV3NOACKGWED
+License Status: Valid
+Evaluation License Expires: Thu Oct  6 07:11:01 2022
+VM Resources: 1 CPU/1 allowed, 997 MB RAM/2048 MB allowed
+Log hard disk: Available
+Hostname: SITE-A
+Operation Mode: NAT
+Current virtual domain: root
+Max number of virtual domains: 1
+Virtual domains status: 1 in NAT mode, 0 in TP mode
+Virtual domain configuration: disable
+FIPS-CC mode: disable
+Current HA mode: standalone
+Branch point: 0237
+Release Version Information: GA
+FortiOS x86-64: Yes
+System time: Mon Sep 26 15:29:21 2022
+Last reboot reason: warm reboot
+```
+
+## Configuración de interfaces
+
+Primero vamos a trabajar con el Site A.
+Puerto 2 sera nuestro ISP1 (La IP es la que nos muestra en el laboratorio)
+
+![22](23.png)
+
+Puerto 3 (La IP es la que nos muestra en el laboratorio)
+
+![23](24.png)
+
+Ahora para probar hacemos un ping al gateway 
+al router del microtic del laboratorio
+```
+SITE-A # exec ping 180.45.22.2
+PING 180.45.22.2 (180.45.22.2): 56 data bytes
+64 bytes from 180.45.22.2: icmp_seq=0 ttl=64 time=8.3 ms
+64 bytes from 180.45.22.2: icmp_seq=1 ttl=64 time=3.7 ms
+64 bytes from 180.45.22.2: icmp_seq=2 ttl=64 time=3.3 ms
+64 bytes from 180.45.22.2: icmp_seq=3 ttl=64 time=3.3 ms
+64 bytes from 180.45.22.2: icmp_seq=4 ttl=64 time=3.8 ms
+
+--- 180.45.22.2 ping statistics ---
+5 packets transmitted, 5 packets received, 0% packet loss
+round-trip min/avg/max = 3.3/4.4/8.3 ms
+
+```
+```
+
+SITE-A # exec ping 200.212.31.2
+PING 200.212.31.2 (200.212.31.2): 56 data bytes
+64 bytes from 200.212.31.2: icmp_seq=0 ttl=64 time=8.4 ms
+64 bytes from 200.212.31.2: icmp_seq=1 ttl=64 time=3.4 ms
+64 bytes from 200.212.31.2: icmp_seq=2 ttl=64 time=5.5 ms
+64 bytes from 200.212.31.2: icmp_seq=3 ttl=64 time=4.0 ms
+64 bytes from 200.212.31.2: icmp_seq=4 ttl=64 time=2.3 ms
+
+--- 200.212.31.2 ping statistics ---
+5 packets transmitted, 5 packets received, 0% packet loss
+round-trip min/avg/max = 2.3/4.7/8.4 ms
+
+```
+Ahora si tratamos de realizar un ping a google nos saldra que no es posible, esto es debido a que nos falta la default route, y esto aplica para cualquier router no importa la marca.
+
+```
+SITE-A # ping google.com
+Unknown action 0
+```
+Para eso nos vamos a Network->static route->create new
+![24](25.png)
+
+Como podemos ver es agregar el gateway (sin mascara)de los proveedores anteriormente añadidos
+![25](26.png)
+
+En esta segunda configuración en la opción de distancia la ponemos más alta, eso se debe a que uno será la red principal(10) y la otra (15) el backup en caso de que se caiga o falle la red entra la otra en función. 
+![26](27.png)
+
+Ahora si hacemos nuevamente ping, podremos salir a internet:
+
+```
+SITE-A # exec ping google.com
+PING google.com (142.250.72.174): 56 data bytes
+64 bytes from 142.250.72.174: icmp_seq=0 ttl=109 time=90.1 ms
+64 bytes from 142.250.72.174: icmp_seq=1 ttl=109 time=62.2 ms
+64 bytes from 142.250.72.174: icmp_seq=2 ttl=109 time=60.6 ms
+64 bytes from 142.250.72.174: icmp_seq=3 ttl=109 time=61.5 ms
+64 bytes from 142.250.72.174: icmp_seq=4 ttl=109 time=62.0 ms
+
+--- google.com ping statistics ---
+5 packets transmitted, 5 packets received, 0% packet loss
+round-trip min/avg/max = 60.6/67.2/90.1 ms
+```
+
+Ahora vamos a configurar el puerto 4.
+
+Agregamos la IP y habilitamos el ping
+
+![27](28.png)
+
+Ahora nos conectamos a la pc y hacemos la pruba de ping al 10.0.1.254
+
+![28](29.png)
+
+![29](30.png)
+
+Ahora vamos a repetir los mimos pasos anteriores para el forti SITE-B pero en este caso a través de la terminal.
+
+Configuración puerto 2
+```
+SITE-B # confi sys interface
 
 
+SITE-B (interface) # edit port2
+
+SITE-B (port2) # show
+config system interface
+    edit "port2"
+        set vdom "root"
+        set type physical
+        set snmp-index 2
+    next
+end
+
+SITE-B (port2) # set ip 69.89.123.1/30
+
+SITE-B (port2) # set alias ISP1
+
+SITE-B (port2) # set role wan
+
+SITE-B (port2) # show
+config system interface
+    edit "port2"
+        set vdom "root"
+        set ip 69.89.123.1 255.255.255.252
+        set type physical
+        set alias "ISP1"
+        set role wan
+        set snmp-index 2
+    next
+end
+
+SITE-B (port2) # end
+```
+
+Ahora el puerto 3 
+
+```
+
+SITE-B (interface) # edit port3
+
+SITE-B (port3) # show
+config system interface
+    edit "port3"
+        set vdom "root"
+        set type physical
+        set snmp-index 3
+    next
+end
+
+
+SITE-B (port3) # set ip 45.32.12.1/30
+
+SITE-B (port3) # set alias ISP-2
+
+SITE-B (port3) # set role wan
+
+SITE-B (port3) # show
+config system interface
+    edit "port3"
+        set vdom "root"
+        set ip 45.32.12.1 255.255.255.252
+        set type physical
+        set alias "ISP-2"
+        set role wan
+        set snmp-index 3
+    next
+end
+
+SITE-B (port3) # end {nota: en caso de seguir configurando en vez de usar end podemos usar next para no salir de la configuración}
+
+```
+SITE-B (interface) # edit port4
+
+SITE-B (port4) # show
+config system interface
+    edit "port4"
+        set vdom "root"
+        set type physical
+        set snmp-index 4
+    next
+end
+
+SITE-B (port4) # set ip 10.0.2.254/24
+
+SITE-B (port4) # show
+config system interface
+    edit "port4"
+        set vdom "root"
+        set ip 10.0.2.254 255.255.255.0
+        set type physical
+        set snmp-index 4
+    next
+end
+
+SITE-B (port4) # set allowaccess ping
+
+SITE-B (port4) # set alias lan
+
+SITE-B (port4) # set role lan
+
+SITE-B (port4) # show
+config system interface
+    edit "port4"
+        set vdom "root"
+        set ip 10.0.2.254 255.255.255.0
+        set allowaccess ping
+        set type physical
+        set alias "lan"
+        set role lan
+        set snmp-index 4
+    next
+end
+
+SITE-B (port4) # end
+
+``
+Ahora colocaremos las rutas
+
+Ya que si tratamos de hacer un ping no nos dejará
+```
+SITE-B # ping google.com
+Unknown action 0
+```
+ISP 1
+```
+SITE-B # config router static
+
+SITE-B (static) # show
+config router static
+end
+
+SITE-B (static) # edit 1
+new entry '1' added
+
+SITE-B (1) # show
+config router static
+    edit 1
+    next
+end
+
+SITE-B (1) # get
+seq-num             : 1
+status              : enable
+dst                 : 0.0.0.0 0.0.0.0
+gateway             : 0.0.0.0
+distance            : 10
+weight              : 0
+priority            : 0
+device              :
+comment             :
+blackhole           : disable
+dynamic-gateway     : disable
+sdwan-zone          :
+dstaddr             :
+internet-service    : 0
+internet-service-custom:
+link-monitor-exempt : disable
+bfd                 : disable
+
+
+SITE-B (1) # set gateway 60.89.123.2
+
+SITE-B (1) # set device port2
+
+SITE-B (1) # show
+config router static
+    edit 1
+        set gateway 69.89.123.2
+        set device "port2"
+    next
+end
+
+SITE-B (1) # next
+
+```
+ISP 2
+
+```
+
+SITE-B (1) # set gateway 60.89.123.2
+
+SITE-B (1) # set device port2
+
+SITE-B (1) # show
+config router static
+    edit 1
+        set gateway 69.89.123.2
+        set device "port2"
+    next
+end
+
+SITE-B (1) # next
+
+SITE-B (static) # end
+
+SITE-B # conf router static
+
+SITE-B (static) # edit 2
+new entry '2' added
+
+SITE-B (2) # show
+config router static
+    edit 2
+    next
+end
+
+SITE-B (2) # set gateway 45.32.12.2
+
+SITE-B (2) # set device port3
+
+SITE-B (2) # set distance 15
+
+SITE-B (2) # show
+config router static
+    edit 2
+        set gateway 45.32.12.2
+        set distance 15
+        set device "port3"
+    next
+end
+
+SITE-B (2) # end
+
+```
+Con show full-configuration podemos ver todos los valores por defecto y todos los que hemos modificado
+
+```
+SITE-B # show full-configuration
+#config-version=FGVMK6-7.0.3-FW-build0237-211207:opmode=1:vdom=0:user=admin
+#conf_file_ver=282647502847925
+#buildno=0237
+#global_vdom=1
+config system global
+    set admin-concurrent enable
+    set admin-console-timeout 0
+    set admin-forticloud-sso-login disable
+    set admin-https-pki-required disable
+    unset admin-https-ssl-banned-ciphers
+    set admin-https-ssl-ciphersuites TLS-AES-128-GCM-SHA256 TLS-AES-256-GCM-SHA384 TLS-CHACHA20-POLY1305-SHA256
+    set admin-https-ssl-versions tlsv1-2
+    set admin-lockout-duration 60
+    set admin-lockout-threshold 3
+    set admin-login-max 100
+    set admin-maintainer enable
+    set admin-port 80
+    set admin-restrict-local disable
+    set admin-scp disable
+    set admin-server-cert "self-sign"
+    set admin-sport 443
+    set admin-ssh-grace-time 120
+    set admin-ssh-password enable
+    set admin-ssh-port 22
+    set admin-ssh-v1 disable
+    set admin-telnet enable
+    set admin-telnet-port 23
+    set admintimeout 448
+    set alias "FortiGate-VM64-KVM"
+    set allow-traffic-redirect enable
+    set anti-replay strict
+    set arp-max-entry 131072
+    set auth-cert "self-sign"
+    set auth-http-port 1000
+    set auth-https-port 1003
+    set auth-keepalive disable
+    set auth-session-limit block-new
+    set auto-auth-extension-device enable
+    set autorun-log-fsck disable
+    set av-affinity "0"
+    set av-failopen pass
+    set av-failopen-session disable
+    set batch-cmdb enable
+    set block-session-timer 30
+    set br-fdb-max-entry 8192
+    set cert-chain-max 8
+    set cfg-save automatic
+    set check-protocol-header loose
+    set check-reset-range disable
+    set cli-audit-log disable
+    set cloud-communication enable
+
+```
+
+```
+SITE-B # conf rout static
+
+SITE-B (static) # show
+config router static
+    edit 1
+        set gateway 69.89.123.2
+        set device "port2"
+    next
+    edit 2
+        set gateway 45.32.12.2
+        set distance 15
+        set device "port3"
+    next
+end
+
+
+```
+
+Hacemos un ping a google para rectificar
+
+```
+SITE-B # exec ping google.com
+PING google.com (142.251.34.142): 56 data bytes
+64 bytes from 142.251.34.142: icmp_seq=0 ttl=111 time=11.9 ms
+64 bytes from 142.251.34.142: icmp_seq=1 ttl=111 time=11.0 ms
+64 bytes from 142.251.34.142: icmp_seq=2 ttl=111 time=11.3 ms
+64 bytes from 142.251.34.142: icmp_seq=3 ttl=111 time=20.4 ms
+64 bytes from 142.251.34.142: icmp_seq=4 ttl=111 time=13.8 ms
+
+--- google.com ping statistics ---
+5 packets transmitted, 5 packets received, 0% packet loss
+round-trip min/avg/max = 11.0/13.6/20.4 ms
+
+SITE-B #
+
+Y un ping a la pc-2
+
+SITE-B # exec ping 10.0.2.10
+PING 10.0.2.10 (10.0.2.10): 56 data bytes
+64 bytes from 10.0.2.10: icmp_seq=0 ttl=64 time=2.8 ms
+64 bytes from 10.0.2.10: icmp_seq=1 ttl=64 time=1.9 ms
+64 bytes from 10.0.2.10: icmp_seq=2 ttl=64 time=3.6 ms
+64 bytes from 10.0.2.10: icmp_seq=3 ttl=64 time=4.7 ms
+64 bytes from 10.0.2.10: icmp_seq=4 ttl=64 time=1.9 ms
+
+--- 10.0.2.10 ping statistics ---
+5 packets transmitted, 5 packets received, 0% packet loss
+round-trip min/avg/max = 1.9/2.9/4.7 ms
+
+```
+
+## Backups & Restore
+
+### Opción web
+
+Ir a configuración, luego backup y si se requiere, podemos restaurar.
+![29](31.png)
+
+En caso de querer editar el archivo backup para pasarlo a otro equipo similar de dónde se realizado la copia debemos tener en cuenta, la cantidad de puertos y la versión del firewall tiene que ser el mismo del equipo original.
+
+```
+#config-version= FGVMK6-7.0.3-FW-build0237-211207:opmode=0:vdom=0:user=admin
+
+#conf_file_ver=282763466964943
+#buildno=0237
+#global_vdom=1
+config system global
+    set alias "FortiGate-VM64-KVM"
+    set hostname "SITE-A"
+    set timezone 04
+end
+```
+## Ahora a traves de la linea de comandos
+
+Lista de opción con ? 
+```
+SITE-B # execute backup ?
+config           config
+disk             disk
+full-config      full-config
+ipsuserdefsig    ipsuserdefsig
+memory           memory
+```
+
+### Con el siguiente comando respaldamos a través de un servidor FTP
+
+***excute backup config ftp "Nombre que asiganaremos al archivo" "IP del servidor FTP" "Usuario" "Password"***
+
+```
+SITE-B # execute backup config ftp SITE-B-27092022 200.212.31.2 ftp ftp
+Please wait...
+
+Connect to ftp server 200.212.31.2 ...
+Send config file to ftp server OK.
+
+```
+
+### Con siguiente comando resturamos el backup con el comando restore
+
+
+***excute restore config ftp "Nombre del archivo" "IP del servidor FTP" "Usuario" "Password"***
+
+Al hacer esto el equipo se va reiniciar automáticamente
+```
+SITE-B # execute restore config ftp SITE-B-27092022 200.212.31.2 ftp ftp
+This operation will overwrite the current setting and could possibly reboot the system!
+Do you want to continue? (y/n)y
+
+Please wait...
+
+Connect to ftp server 200.212.31.2 ...
+Get config file from ftp server OK.
+File check OK.
+```
+Si uno tiene dudas si se reinició o no el equipo el comando para revisar es el siguiente
+```
+SITE-B # get system performance status
+CPU states: 0% user 2% system 0% nice 94% idle 1% iowait 3% irq 0% softirq
+CPU0 states: 0% user 2% system 0% nice 94% idle 1% iowait 3% irq 0% softirq
+Memory: 1021528k total, 714496k used (69.9%), 163128k free (16.0%), 143904k freeable (14.1%)
+Average network usage: 1 / 0 kbps in 1 minute, 1 / 0 kbps in 10 minutes, 0 / 0 kbps in 30 minutes
+Average sessions: 14 sessions in 1 minute, 17 sessions in 10 minutes, 12 sessions in 30 minutes
+Average session setup rate: 0 sessions per second in last 1 minute, 0 sessions per second in last 10 minutes, 0 sessions per second in last 30 minutes
+Virus caught: 0 total in 1 minute
+IPS attacks blocked: 0 total in 1 minute
+Uptime: 0 days,  0 hours,  5 minutes
+
+```
+### Renovar licencia de laboratorio, en la vida real se contrata un partner.
+
+En este caso como es laboratorio tenemos que revisar cuando vence la experiencia para renovarlo, para ello realice un respaldo antes.
+
+En este caso vence el 6 de octubre
+```
+admin@192.168.1.170's password:
+SITE-A # execute backup config ftp sitea2809 200.212.31.2 ftp ftp
+Please wait...
+
+Connect to ftp server 200.212.31.2 ...
+Send config file to ftp server OK.
+
+SITE-A # get sys status
+Version: FortiGate-VM64-KVM v7.0.3,build0237,211207 
+License Status: Valid
+Evaluation License Expires: Thu Oct  6 07:11:01 2022
+VM Resources: 1 CPU/1 allowed, 997 MB RAM/2048 MB 
+```
+#### Con este comando reiniciamos a default el equipo FTG de su caja pero solo en la versión de laboratorio permite restaurar las licencias otros 15 días más de prueba
+En este caso tendremos que configurar de nuevo la configuración de interfaces una vez que restauremos el backup.
+```
+SITE-A # execute factoryreset
+```
+#### Pero si ejectamos este otro comando nos permite restaurar el equipo a default pero con la excepción de que no borra la configuración de la red.
+
+```
+SITE-A # execute factoryreset2
+```
+#### ejecutamos comando, tener en cuenta que tardará unos minutos.
+```
+SITE-A # exec factoryreset2
+This operation will reset the system to factory default except system.global.vdom-mode/system.global.long-vdom-name/VDOMs/system.virtual-switch/system.interface/system.settings/router.static/router.static6!
+Do you want to continue? (y/n)y
+```
+
+Si nos volvemos a conectar a través de la terminal no pedira nuevamente que coloquemos una contraseña nueva
+```
+login as: admin
+You are forced to change your password. Please input a new password.
+```
+Si revisamos de nuevo el equipo veremos que el nombre del eequipo cambió así como la fecha de fin de licencia y que los puertos configurados continuan.
+
+```
+FortiGate-VM64-KVM # get syst stat
+Version: FortiGate-VM64-KVM v7.0.3,build0237,211207 (GA)
+Evaluation License Expires: Thu Oct 13 12:33:32 2022
+System time: Wed Sep 28 12:43:39 2022
+Last reboot reason: warm reboot
+```
+
+Si revisamos la configuración de los puertos vermos que continuán gracias a que fue un exec resetfactory2
+
+```
+
+FortiGate-VM64-KVM # show syst inte
+config system interface
+    edit "port1"
+        set vdom "root"
+        set ip 192.168.1.170 255.255.255.0
+        set allowaccess ping https ssh http fgfm
+        set type physical
+        set alias "MGMT"
+        set device-identification enable
+        set lldp-transmission enable
+        set role lan
+        set snmp-index 1
+        config ipv6
+            set ip6-send-adv enable
+            set ip6-other-flag enable
+        end
+        set dns-server-override disable
+    next
+    edit "port2"
+        set vdom "root"
+        set ip 200.212.31.1 255.255.255.252
+        set type physical
+        set alias "ISP1"
+        set lldp-reception enable
+        set role wan
+        set snmp-index 2
+        config ipv6
+            set ip6-send-adv enable
+            set ip6-other-flag enable
+        end
+    next
+    edit "port3"
+        set vdom "root"
+        set ip 180.45.22.1 255.255.255.252
+        set type physical
+        set alias "ISP2"
+        set lldp-reception enable
+        set role wan
+        set snmp-index 3
+        config ipv6
+            set ip6-send-adv enable
+            set ip6-other-flag enable
+        end
+    next
+    edit "port4"
+        set vdom "root"
+        set ip 10.0.1.254 255.255.255.0
+        set allowaccess ping
+        set type physical
+        set alias "LAN"
+        set device-identification enable
+--More--
+
+```
+
+Ahora vamos a restaurar el respaldo antes realizado.
+
+```
+FortiGate-VM64-KVM # exec rest conf ftp sita2809 200.212.31.2 ftp ftp
+This operation will overwrite the current setting and could possibly reboot the system!
+Do you want to continue? (y/n)
+
+```
+
+### Revisiones
+
+Son Backups locales guardadas en los equipos de FTG, no es recomendable debido a que si falla el equipo y no almacenamos externamente podemos perder el backup.
