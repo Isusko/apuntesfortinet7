@@ -909,3 +909,635 @@ Do you want to continue? (y/n)
 ### Revisiones
 
 Son Backups locales guardadas en los equipos de FTG, no es recomendable debido a que si falla el equipo y no almacenamos externamente podemos perder el backup.
+
+## Aprendiendo a usar CLI
+? si apretamos nos mostrará el menú
+
+SITE-A #
+config      Configure object.
+get         Get dynamic and system information.
+show        Show configuration.
+diagnose    Diagnose facility.
+execute     Execute static commands.
+alias       Execute alias commands.
+exit        Exit the CLI.
+
+Aquí podemos hacer una busqueda por filtro, donde grep es quien recibe la sentencia y -f es el filtro
+```
+SITE-A # show syst int | grep -f "port1"
+config system interface
+    edit "port1" <---
+        set vdom "root"
+        set ip 192.168.1.170 255.255.255.0
+        set allowaccess ping https ssh http fgfm
+        set type physical
+        set alias "MGMT"
+        set device-identification enable
+        set lldp-transmission enable
+        set role lan
+        set snmp-index 1
+        set dns-server-override disable
+    next
+    edit "port10" <---
+        set vdom "root"
+        set type physical
+        set snmp-index 10
+    next
+end
+```
+otro ejemplo pero ahora con filtro y el insensitive
+```
+SITE-A # show | grep -f "Sitea"
+
+SITE-A # show | grep -f "SITE-A"
+config system global
+    set alias "FortiGate-VM64-KVM"
+    set hostname "SITE-A" <---
+    set timezone 04
+end
+```
+En este ejemplo podemos ver que se agrega la opción -i que indica que es insensitive, por lo tanto no importa si lo busco con mayusculas o minúsculas
+```
+SITE-A (global) # get | grep -i "HOST"
+gui-allow-default-hostname: disable
+gui-display-hostname: disable
+hostname            : SITE-A
+```
+```
+SITE-A # show | grep -fi "vpn"
+config system accprofile
+    edit "prof_admin"
+        set secfabgrp read-write
+        set ftviewgrp read-write
+        set authgrp read-write
+        set sysgrp read-write
+        set netgrp read-write
+        set loggrp read-write
+        set fwgrp read-write
+        set vpngrp read-write <---
+        set utmgrp read-write
+        set wanoptgrp read-write
+        set wifi read-write
+    next
+end
+config system interface
+    edit "ssl.root"
+        set vdom "root"
+        set type tunnel
+        set alias "SSL VPN interface" <---
+        set snmp-index 13
+    next
+end
+config system replacemsg sslvpn "sslvpn-login" <---
+end
+config system replacemsg sslvpn "sslvpn-header" <---
+end
+config system replacemsg sslvpn "sslvpn-limit" <---
+end
+config system replacemsg sslvpn "hostcheck-error" <---
+end
+config system replacemsg sslvpn "sslvpn-provision-user" <---
+end
+config system replacemsg sslvpn "sslvpn-provision-user-sms" <---
+end
+config firewall address
+    edit "SSLVPN_TUNNEL_ADDR1" <---
+        set uuid 3b4c13ee-39b7-51ed-2d2b-35f95759a991
+        set type iprange
+        set start-ip 10.212.134.200
+        set end-ip 10.212.134.210
+    next
+end
+config firewall address6
+    edit "SSLVPN_TUNNEL_IPv6_ADDR1" <---
+        set uuid 3b4c1560-39b7-51ed-b4ee-9c4b5cc838c5
+        set ip6 fdff:ffff::/120
+    next
+end
+config vpn certificate ca <---
+end
+config vpn certificate local <---
+end
+config vpn ssl web host-check-software <---
+end
+config vpn ssl web portal <---
+    edit "full-access"
+        set tunnel-mode enable
+        set ipv6-tunnel-mode enable
+        set web-mode enable
+        set ip-pools "SSLVPN_TUNNEL_ADDR1" <---
+        set ipv6-pools "SSLVPN_TUNNEL_IPv6_ADDR1" <---
+    next
+end
+config vpn ssl settings <---
+    set servercert ''
+    set port 443
+end
+config vpn ocvpn <---
+end
+config report layout
+    edit "default"
+        set title "FortiGate System Analysis Report"
+        set style-theme "default-report"
+        set options include-table-of-content view-chart-as-heading
+        config body-item
+            edit 1701
+                set text-component heading1
+                set content "VPN Usage" <---
+            next
+            edit 1711
+                set type chart
+                set top-n 80
+                set chart "vpn.bandwidth.static-tunnels_c" <---
+            next
+            edit 1721
+                set type chart
+                set top-n 80
+                set chart "vpn.bandwidth.dynamic-tunnels_c" <---
+            next
+            edit 1731
+                set type chart
+                set top-n 80
+                set chart "vpn.bandwidth.ssl-tunnel.users_c" <---
+            next
+            edit 1741
+                set type chart
+                set top-n 80
+                set chart "vpn.bandwidth.ssl-web.users_c" <---
+            next
+        end
+    next
+end
+
+```
+## Gestionando administradores
+Aquí vamos administrar los permisos y crear usuarios
+System-> administrators
+System-> admin profiles
+![31](32.png)
+
+## Nuestra primer policy vía web
+Estos pasos se realizan en ambos dispositivos forti
+
+Policy objets->Firewall Policy
+![32](33.png)
+Como vemos ha sido creado
+![33](34.png)
+
+Ahora si hacemos un ping en la pc1 vemos que ahora si lo hace:
+![34](35.png)
+
+## Nuestra primer policy vía CLI
+Estos pasos se realizan en ambos dispositivos forti
+
+```
+login as: admin
+admin@192.168.1.170's password:
+
+SITE-A # config firewall policy
+
+SITE-A (policy) # show
+config firewall policy
+end
+
+SITE-A (policy) # show full-configuration
+config firewall policy
+end
+```
+Aquí vamos a crear el primer Policy
+```
+SITE-A (policy) # edit 1
+new entry '1' added
+```
+Aquí vamos hacer un show y get para obtener información de como se encuentra el policy antes de ponerle el nombre, el origine, destino, el servicio
+```
+SITE-A (1) # show
+config firewall policy
+    edit 1
+        set uuid eed54a0e-4a4f-51ed-b12a-4affe695a569
+    next
+end
+
+SITE-A (1) # get
+policyid            : 1
+status              : enable
+name                :
+uuid                : eed54a0e-4a4f-51ed-b12a-4affe695a569
+srcintf             :
+dstintf             :
+action              : deny
+ztna-status         : disable
+srcaddr             :
+dstaddr             :
+srcaddr6            :
+dstaddr6            :
+internet-service    : disable
+internet-service-src: disable
+reputation-minimum  : 0
+src-vendor-mac      :
+rtp-nat             : disable
+schedule            :
+schedule-timeout    : disable
+service             :
+tos-mask            : 0x00
+anti-replay         : enable
+logtraffic          : utm
+logtraffic-start    : disable
+session-ttl         : 0
+vlan-cos-fwd        : 255
+vlan-cos-rev        : 255
+fec                 : disable
+wccp                : disable
+groups              :
+users               :
+fsso-groups         :
+natip               : 0.0.0.0 0.0.0.0
+tcp-mss-sender      : 0
+tcp-mss-receiver    : 0
+comments            :
+block-notification  : disable
+custom-log-fields   :
+replacemsg-override-group:
+srcaddr-negate      : disable
+dstaddr-negate      : disable
+service-negate      : disable
+captive-portal-exempt: disable
+dsri                : disable
+radius-mac-auth-bypass: disable
+delay-tcp-npu-session: disable
+vlan-filter         :
+sgt-check           : disable
+send-deny-packet    : disable
+match-vip           : disable
+```
+Ahora si vamos a ponerle un nombre
+```
+SITE-A (1) # set name Internet
+```
+Ahora el Incoming Interface en este caso es el Puerto 4
+```
+SITE-A (1) # set srcintf port4
+```
+Después el Outgoing Interface en este caso es el Puerto 3
+```
+SITE-A (1) # set dstintf port3
+```
+Ahora vamos a poner all la dirección de origen, destino, la agenda y servicio que este último tiene que ser en mayúscula
+```
+SITE-A (1) # set srcaddr all
+
+SITE-A (1) # set dstaddr all
+
+SITE-A (1) # set schedule always
+
+SITE-A (1) # set service ALL
+```
+Ahora vamos a observar los cambios con un show y un show full-fullconfiguration
+```
+SITE-A (1) # show
+config firewall policy
+    edit 1
+        set name "Internet"
+        set uuid eed54a0e-4a4f-51ed-b12a-4affe695a569
+        set srcintf "port4"
+        set dstintf "port3"
+        set srcaddr "all"
+        set dstaddr "all"
+        set schedule "always"
+        set service "ALL"
+    next
+end
+
+SITE-A (1) # show full-configuration
+config firewall policy
+    edit 1
+        set status enable
+        set name "Internet"
+        set uuid eed54a0e-4a4f-51ed-b12a-4affe695a569
+        set srcintf "port4"
+        set dstintf "port3"
+```
+Aquí podemos observar que  la opción de actión está como denegado y no aparece la opción de NAT en la lista
+```
+        set action deny
+
+```        
+        set ztna-status disable
+        set srcaddr "all"
+        set dstaddr "all"
+        set internet-service disable
+        set internet-service-src disable
+        unset reputation-minimum
+        set rtp-nat disable
+        set schedule "always"
+        set schedule-timeout disable
+        set service "ALL"
+        set tos-mask 0x00
+        set anti-replay enable
+        set logtraffic utm
+        set logtraffic-start disable
+        set session-ttl 0
+        set vlan-cos-fwd 255
+        set vlan-cos-rev 255
+        set fec disable
+        set wccp disable
+        set natip 0.0.0.0 0.0.0.0
+        set tcp-mss-sender 0
+        set tcp-mss-receiver 0
+        set comments ''
+        set block-notification disable
+        set replacemsg-override-group ''
+        set srcaddr-negate disable
+        set dstaddr-negate disable
+        set service-negate disable
+        set captive-portal-exempt disable
+        set dsri disable
+        set radius-mac-auth-bypass disable
+        set delay-tcp-npu-session disable
+        unset vlan-filter
+        set send-deny-packet disable
+        set match-vip disable
+    next
+end
+```
+
+Aquí vamos a poner la opción Action en modo ACCEPT (lowcase) y 
+```
+SITE-A (1) # set action accept
+```
+De nuevo hacemos un show full y aquí podremos ver como la opción NAT aparece en la lista
+```
+SITE-A (1) # show full-configuration
+config firewall policy
+    edit 1
+        set status enable
+        set name "Internet"
+        set uuid eed54a0e-4a4f-51ed-b12a-4affe695a569
+        set srcintf "port4"
+        set dstintf "port3"
+```
+        set action accept
+        set nat64 disable
+        set nat46 disable
+```      
+        set ztna-status disable
+        set srcaddr "all"
+        set dstaddr "all"
+        set internet-service disable
+        set internet-service-src disable
+        unset reputation-minimum
+        set rtp-nat disable
+        set schedule "always"
+        set schedule-timeout disable
+        set service "ALL"
+        set tos-mask 0x00
+        set anti-replay enable
+        set dynamic-shaping disable
+        set passive-wan-health-measurement disable
+        set utm-status disable
+        set inspection-mode flow
+        set profile-protocol-options "default"
+        set ssl-ssh-profile "no-inspection"
+        set logtraffic utm
+        set logtraffic-start disable
+        set capture-packet disable
+        set auto-asic-offload enable
+        set nat disable
+        set session-ttl 0
+        set vlan-cos-fwd 255
+        set vlan-cos-rev 255
+        set fec disable
+        set wccp disable
+        set disclaimer disable
+        set email-collect disable
+        set natip 0.0.0.0 0.0.0.0
+        set diffserv-forward disable
+        set diffserv-reverse disable
+        set tcp-mss-sender 0
+        set tcp-mss-receiver 0
+        set comments ''
+        set block-notification disable
+        set replacemsg-override-group ''
+        set srcaddr-negate disable
+        set dstaddr-negate disable
+        set service-negate disable
+        set timeout-send-rst disable
+        set captive-portal-exempt disable
+        set dsri disable
+        set radius-mac-auth-bypass disable
+        set delay-tcp-npu-session disable
+        unset vlan-filter
+        set traffic-shaper ''
+        set traffic-shaper-reverse ''
+        set per-ip-shaper ''
+    next 
+    end
+
+Habilitamos el NAT
+```
+SITE-A (1) # set nat enable
+```
+Volvemos a hacer un show full
+
+```
+SITE-A (1) # show full-configuration
+config firewall policy
+    edit 1
+        set status enable
+        set name "Internet"
+        set uuid eed54a0e-4a4f-51ed-b12a-4affe695a569
+        set srcintf "port4"
+        set dstintf "port3"
+        set action accept
+        set ztna-status disable
+        set srcaddr "all"
+        set dstaddr "all"
+        set internet-service disable
+        set internet-service-src disable
+        unset reputation-minimum
+        set rtp-nat disable
+        set schedule "always"
+        set schedule-timeout disable
+        set service "ALL"
+        set tos-mask 0x00
+        set anti-replay enable
+        set dynamic-shaping disable
+        set passive-wan-health-measurement disable
+        set utm-status disable
+        set inspection-mode flow
+        set profile-protocol-options "default"
+        set ssl-ssh-profile "no-inspection"
+        set logtraffic utm
+        set logtraffic-start disable
+        set capture-packet disable
+        set auto-asic-offload enable
+        set nat enable
+        set permit-any-host disable
+        set permit-stun-host disable
+        set fixedport disable
+        set ippool disable
+        set session-ttl 0
+        set vlan-cos-fwd 255
+        set vlan-cos-rev 255
+        set fec disable
+        set wccp disable
+        set disclaimer disable
+        set email-collect disable
+        set natip 0.0.0.0 0.0.0.0
+        set diffserv-forward disable
+        set diffserv-reverse disable
+        set tcp-mss-sender 0
+        set tcp-mss-receiver 0
+        set comments ''
+        set block-notification disable
+        set replacemsg-override-group ''
+        set srcaddr-negate disable
+        set dstaddr-negate disable
+        set service-negate disable
+        set timeout-send-rst disable
+        set captive-portal-exempt disable
+        set dsri disable
+        set radius-mac-auth-bypass disable
+        set delay-tcp-npu-session disable
+        unset vlan-filter
+        set traffic-shaper ''
+        set traffic-shaper-reverse ''
+        set per-ip-shaper ''
+    next
+end
+
+SITE-A (1) # end
+
+SITE-A #
+
+```
+Crear objetos de tipo Address, Schedule y service
+Esto los encontramos en la opción de Policy & Objects
+
+![35](36.png)
+
+Primero vamos a crear un objeto tipo Address
+![36](37.png)
+Vamos escoger del tipo subnet en este caso, pero el que me parece interesante es la opción demografica para prohibir conexiones de otros países como Isarel, la India, China
+![37](38.png)
+En este caso la IP es del servidor del laboratorio  y vemos también que ya se ve en la lista con el nombre Active Directory
+![38](39.png)
+
+Vamos a la policy del firewall y en origen seleccionamos el active directory
+![39](40.png)
+
+Lo que hace es que el único equipo que va a salir a través de internet será el servidor windows y no la terminal, en este ejemplo cree otro equipo con windows 7 conectado al puerto 5 en vez del 4 entonces al hacer la prueba de ping ya no tiene salida a internet
+
+![40](41.png)
+
+Respecto a la opción de horario se cambia en igual en el policy en vez de alway personalizar el servicio o salida a internet.
+
+
+## SERVICE
+En la opción de Service se encuentra una opción que se llama Web Access que cubre salidas a http, https y la resolución de nombres DNS esto con el fin de poder navegar en internet lo que impide realizar ping pero si navegar a través de internet.
+
+![41](42.png)
+
+![42](43.png)
+
+Otra opción en la parte de service sería seleccionar invidualmente los permisos de salida http, https, DNS.
+![43](44.png)
+
+## Schedules
+En este ejemplo creamos un schedules para implementar el servicio de internet en horario en el que estará disponible.
+
+![44](45.png)
+
+Aquí lo implementamos en nuestro policy 
+![45](46.png)
+
+Esto hará que el servicio de internet en esta computadora o grupo de equipos el servicio de internet se suspenda.
+
+Lo que noté en esta prueba es que funciona con la opción one time y no con la opción Recurrening
+
+![46](47.png)
+
+## Internet Services
+
+La lista servicios que están por default o se pueden crear, sirven para la opción destination en firewall police.
+
+![47](48.png)
+
+Aquí podemos agregar a la lista servicios como teamviewer, telegram y bloquearlo, pero no se recomienda hacerlo desde aquí que para eso Forti tiene opción para bloquear paginas web y servicios, aplicaciones.
+
+![48](49.png)
+
+Ahora con respecto a las firewall policy recordar que arriba debe de ir los de bloqueo y abajo a los de permiso.
+
+![49](50.png)
+
+## Configurar Rutas estáticas
+
+En este ejemplo se van a conectar los dos routers simulado que el Site-A es LEgales con la IP 172.21.0.1/30 y el Site-B 
+y hacer un ping de la computadora win7 (site A) al dominio windows server(Site A)
+
+Primero vamos a ir a configurar en el Site B en Network->Static Route->Create New
+Se coloca en Destino la IP (10.0.1.0/24) debido a que pertenece al grupo del puerto 4 y como Gateway (172.21.0.1) porque pertenece al grupo de IP de conexión del puerto 7 de FG de Legales.
+
+![50](51.png)
+
+Y haremos lo mismo en el Site A
+Se coloca en Destino la IP (10.0.2.0/24) debido a que pertenece al grupo del puerto 4 y como Gateway (172.21.0.2) porque pertenece al grupo de IP de conexión del puerto 7 de FG de Legales.
+
+![51](52.png)
+
+Después necesitamos crear una politica, nos vamos a Policy & Objects->Firewall Policy->Create New, ya que el que teniamos no sirve para la conexión entre routers, servía para la salida a internet.
+
+Primero lo vamos hacer en el Site-B, que la nueva política se llamará TO_LEGALES, se desactiva el NAT debido a que será una conexión device to device y salida a internet.
+
+En este caso solo es de IDA, necesitamos uno de Reversa
+
+![52](53.png)
+
+Y para eso vamos a dar botón derecho encima de TO_LEGALES y Seleccionar la opción que dice REVERSE o hacerlo de forma manual, y nos queda así,
+
+![53](54.png)
+
+Lo mismo se hace para el Site-A y podremos hacer ping en ambas computadoras y obtener comunicación entre ellas
+
+![54](55.png)
+
+Todo funciona bien hasta ahí, pero podemos hacerle unas modificaciones por ejemplo vamos a crear un Address en ambos FG.
+
+Policy & Objects->Adresses->Create New
+Esto es muy útil si esta subnet la utilizamos en otros lugares y solo mandarlo a llamar sin necesidad de estar escribiendo esto manualmente.
+
+![55](56.png)
+
+Ahora vamos a rutas estaticas y lo agregamos el objeto de contabilidad
+
+![56](57.png)
+
+Y ahora nos vamos a las politicas de TO/FROM(CONTABILIDAD/LEGALES)
+en la opción TO_LEGALES / TO_CONTABILIDAD VA en Destination
+Policy & Objects->Firewall Policy y en la opción de destination cambiar all por CONTABILIDAD
+
+![57](58.png)
+
+en la opción FROM_LEGALES / TO_CONTABILIDAD VA en Source
+Policy & Objects->Firewall Policy y en la opción de source cambiar all por CONTABILIDAD
+
+![58](59.png)
+
+Ahora vamos a crear un objeto address llamado RED LOCAL
+Apuntando a su propia RED de acuerdo al FG, en este caso es el SITE B y la IP es 10.0.2.0/24 en el SITE A sería la IP 10.0.1.0/24
+![59](60.png) 
+
+Y volvemos a Firewall Policy y cambiamos el Source y Destination
+
+![60](61.png)
+
+Después de realizar el cambio probamos haciendo ping y funciona correctamente.
+
+![61](62.png)
+
+Ahora vamos a Policy Routes
+
+
+```
+```

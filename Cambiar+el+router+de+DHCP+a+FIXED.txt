@@ -1,0 +1,13 @@
+#Desactivar el cliente DHCP
+/ip dhcp-client remove numbers=0
+
+#Colocar una ip de nuestra red que no este en uso
+#Reemplazar x.x.x.x por la ip
+/ip address add address=x.x.x.x/24 interface=ether1
+
+#Crear la default route utilizando nuestro GATEWAY
+#Reemplazar x.x.x.x por la ip
+/ip route add dst-address=0.0.0.0/0 gateway=x.x.x.x
+
+#Establecer un servidor DNS
+/ip dns set servers=8.8.8.8
