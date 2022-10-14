@@ -1536,8 +1536,19 @@ Después de realizar el cambio probamos haciendo ping y funciona correctamente.
 
 ![61](62.png)
 
-Ahora vamos a Policy Routes
+## Policy Routes
+Ahora vamos a realizar las politicas de Enrutamiento, esto no sustituye a las rutas estaticas es un complemento en este caso vamos hacer uso de las rutas estaticas añadidas anteriormente
 
+Aquí podemos indicar son filtros del tipo de tráfico que llega al FG y a que destino queremos enviarlo especificando el protocolo y el puerto.
+
+Network->Policy Routes
+
+En el siguiente ejemplo vamos a mandar datos ICMP a través del puerto 7 con la IP 172.1.0.0/30 y cuando envíe y reciba información http será a través de los puertos de internet Puerto 3 y 4
+
+Esto nos indica esta policy, cuando por el puerto 4 el equipo con la IP 10.0.2.10 quiera mandar info al equipo con la IP 10.0.1.10 contra el puerto TCP 80 haga un forward trafic por el puerto 2 que es el ISP1 con el gateway 60.893123.2 
+![62](63.png)
+
+Entonces cuando quiera ir la pc win7 al pc dominio de servicio no lo haga por la ruta estatica con la ip 172.1.0.0/30 sino que lo haga a través del ISP1
 
 ```
 ```
