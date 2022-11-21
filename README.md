@@ -1550,5 +1550,524 @@ Esto nos indica esta policy, cuando por el puerto 4 el equipo con la IP 10.0.2.1
 
 Entonces cuando quiera ir la pc win7 al pc dominio de servicio no lo haga por la ruta estatica con la ip 172.1.0.0/30 sino que lo haga a través del ISP1
 
+## Monitoreo de Rutas
+Policy base rute
+Rutas producidas por protocolos de enrutamiento dinamico
+
+El monitoreo a trvés de la web es accediendo a Dashboard->Network->doble click en static & Dynamic Routing
+
+Aquí se puede hacer revisión 
+
+![63](64.png)
+
+
+![64](65.png)
+
+A través del CLI
 ```
+
+SITE-A # get router info routing-table??
+details      show routing table details information
+all          show all routing table entries
+rip          show rip routing table
+ospf         show ospf routing table
+bgp          show bgp routing table
+isis         show isis routing table
+static       show static routing table
+connected    show connected routing table
+database     show routing information base
 ```
+Con este comando nos lista los puertos conectados 
+SITE-A # get router info routing-table connected 
+```
+Routing table for VRF=0
+C       10.0.1.0/24 is directly connected, port4
+C       172.21.0.0/30 is directly connected, port7
+C       180.45.22.0/30 is directly connected, port3
+C       192.168.1.0/24 is directly connected, port1
+C       200.212.31.0/30 is directly connected, port2
+```
+Aquí solo vemos las estaticas
+```
+SITE-A # get router info routing-table static
+Routing table for VRF=0
+S*      0.0.0.0/0 [10/0] via 180.45.22.2, port3
+S       10.0.2.0/24 [10/0] via 172.21.0.2, port7
+```
+Nos muestra casi todos excepto el puerto 3 que a pesar de estar conectado no lo muestra por el salto.
+
+```
+Con este comando no nos esta mostrado el puerto a pesar de estar conectado no esta siendo utilizada para la transferencia de datos.
+SITE-A # get router info routing-table all
+Codes: K - kernel, C - connected, S - static, R - RIP, B - BGP
+       O - OSPF, IA - OSPF inter area
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2
+       i - IS-IS, L1 - IS-IS level-1, L2 - IS-IS level-2, ia - IS-IS inter area
+       * - candidate default
+
+Routing table for VRF=0
+S*      0.0.0.0/0 [10/0] via 180.45.22.2, port3
+C       10.0.1.0/24 is directly connected, port4
+S       10.0.2.0/24 [10/0] via 172.21.0.2, port7
+C       172.21.0.0/30 is directly connected, port7
+C       180.45.22.0/30 is directly connected, port3
+C       192.168.1.0/24 is directly connected, port1
+C       200.212.31.0/30 is directly connected, port2
+```
+Con este comando si nos muestra el puerto 3 a pesar de que la transferencia de datos aparece como 0.0.0.0/0 que indica que esta activa pero sin uso para la transferencia de datos.
+```
+SITE-A # get router info routing-table database 
+Codes: K - kernel, C - connected, S - static, R - RIP, B - BGP
+       O - OSPF, IA - OSPF inter area
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2
+       i - IS-IS, L1 - IS-IS level-1, L2 - IS-IS level-2, ia - IS-IS inter area
+       > - selected route, * - FIB route, p - stale info
+
+Routing table for VRF=0
+S    *> 0.0.0.0/0 [10/0] via 180.45.22.2, port3
+S       0.0.0.0/0 [15/0] via 200.212.31.2, port2
+C    *> 10.0.1.0/24 is directly connected, port4
+S    *> 10.0.2.0/24 [10/0] via 172.21.0.2, port7
+C    *> 172.21.0.0/30 is directly connected, port7
+C    *> 180.45.22.0/30 is directly connected, port3
+C    *> 192.168.1.0/24 is directly connected, port1
+C    *> 200.212.31.0/30 is directly connected, port2
+```
+Porque si el puerto estuviera realmente inactivo en la parte de adelante como este ejemplo el puerto 2 esta inactivo debido a que lo puse como estatus disable.
+*> la falta de flechita indica que esta inactivo por la falta de transferencia de datos, no porqué esté desactivado.
+
+```
+SITE-A # get router info routing-table database
+Codes: K - kernel, C - connected, S - static, R - RIP, B - BGP
+       O - OSPF, IA - OSPF inter area
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2
+       i - IS-IS, L1 - IS-IS level-1, L2 - IS-IS level-2, ia - IS-IS inter area
+       > - selected route, * - FIB route, p - stale info
+
+Routing table for VRF=0
+S    *> 0.0.0.0/0 [10/0] via 180.45.22.2, port3
+S       0.0.0.0/0 [15/0] via 200.212.31.2, port2 inactive
+C    *> 10.0.1.0/24 is directly connected, port4
+S    *> 10.0.2.0/24 [10/0] via 172.21.0.2, port7
+C    *> 172.21.0.0/30 is directly connected, port7
+C    *> 180.45.22.0/30 is directly connected, port3
+C    *> 192.168.1.0/24 is directly connected, port1
+```
+Ahora para ver la policy route es con el siguinete comando
+
+```
+SITE-B # diagnose firewall proute list
+list route policy info(vf=root):
+
+id=1 dscp_tag=0xff 0xff flags=0x0 tos=0x00 tos_mask=0x00 protocol=6 sport=0-65535 iif=6 dport=80 path(1) oif=4(port2) gwy=69.89.123.2 
+source wildcard(1): 10.0.2.10/255.255.255.255 
+destination wildcard(1): 10.0.1.10/255.255.255.255 
+hit_count=0 last_used=2022-10-19 15:19:15
+```
+## Atributos de las rutas
+
+¿Qué pasa si los ISP tiene la misma distancia?
+En este caso 15 para el ISP1 y ISP2 entonces podemos modificar la opción prioridad.
+
+Para este ejemplo ingresamos en Netowor->Static Routes->
+Modificar las ISP's con 15 
+
+![65](66.png)
+
+![66](67.png)
+Aquí modificamos la prioridad en este ejemplo 3
+![67](68.png)
+
+Habilitamos la casilla Prioridad, en este caso la priopridad se da quien tenga el número más pequeño en este caso es 0 (ISP2,Puerto3)
+
+![68](69.png)
+
+Vamos a crear un firewall policy con el nombre INTERNET-ISP2(Policy & Objects->Firewall policy->Create New)
+
+![69](70.png)
+
+Una vez creado hacemos un ping desde la PC2 -10.0.2.10 hacia google y revisamos porque puerto salimos, en la imagen se muestran el antes(arriba) y después(abajo) en este último se muestra que tiene actividad en kb (señalado con la flecha roja)
+![70](71.png)
+
+¿Y porqué pasa esto? Sí tiene que ver con con la secuencia en este caso la prioridad cae en el ISP2 porqué está en 0, mientras el ISP1 tiene la prioridad de 3.
+
+![71](72.png)
+
+Como sería con CLI
+
+Se interpreta de la siguiente manera
+```
+SITE-B # get router info routing-table database 
+Codes: K - kernel, C - connected, S - static, R - RIP, B - BGP
+       O - OSPF, IA - OSPF inter area
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2
+       i - IS-IS, L1 - IS-IS level-1, L2 - IS-IS level-2, ia - IS-IS inter area
+       > - selected route, * - FIB route, p - stale info
+```
+Aquí se puede observar que el puerto 3 no tiene nada enfrente debido a que las configuraciones por default son cero y no se muestran.
+
+El puerto 2 nos muestra enfren [3/0] ya que la prioridad es 3 y la metrica 0
+```
+Routing table for VRF=0
+S    *> 0.0.0.0/0 [15/0] via 45.32.12.2, port3
+     *>           [15/0] via 60.89.123.2, port2, [3/0]
+S    *> 10.0.1.0/24 [10/0] via 172.21.0.1, port7
+C    *> 10.0.2.0/24 is directly connected, port4
+C    *> 45.32.12.0/30 is directly connected, port3
+C    *> 60.89.123.0/30 is directly connected, port2
+C    *> 172.21.0.0/30 is directly connected, port7
+C    *> 192.168.1.0/24 is directly connected, port1
+```
+## Routing para servicios de Internet
+
+Es solo teoríco debido a que por el tipo de licencia no se puede realizar.(revisar curso)
+
+Ir a Network->Static Route
+En este ejemplo creamos una ruta estatica para salir a través del puerto 3 y hacer una consulta a los servidores DNS de google.
+![72](73.png)
+
+## Ruta de acceso múltiple de igual coste (ECMP)
+
+Balanceo de Carga
+
+Lo primero que se debe de hacer es que la Distancia Administrativa en ambos ISP sea la misma en este caso 10 (Network->Static Routes-> ISP 1 y 2 ->administrativa Distance 10) así como las Prioridades deben de ser iguales en este caso 5.
+
+Con estas configuraciones ya tendriamos nuestro ICMP funcionando (balanceo de carga)
+![73](74.png)
+
+Si hacemos la consulta con el CLI vemos lo siguiente:
+
+```
+SITE-A # get rou info routing-table database
+Codes: K - kernel, C - connected, S - static, R - RIP, B - BGP
+       O - OSPF, IA - OSPF inter area
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2
+       i - IS-IS, L1 - IS-IS level-1, L2 - IS-IS level-2, ia - IS-IS inter area
+       > - selected route, * - FIB route, p - stale info
+
+Routing table for VRF=0
+S    *> 0.0.0.0/0 [10/0] via 180.45.22.2, port3, [5/0]
+     *>           [10/0] via 200.212.31.2, port2, [5/0]
+C    *> 10.0.1.0/24 is directly connected, port4
+S    *> 10.0.2.0/24 [10/0] via 172.21.0.2, port7
+C    *> 172.21.0.0/30 is directly connected, port7
+C    *> 180.45.22.0/30 is directly connected, port3
+C    *> 192.168.1.0/24 is directly connected, port1
+C    *> 200.212.31.0/30 is directly connected, port2
+
+```
+Si hacemos un ping podremos ver que sigue saliendo solo por el ISP, y no ambos (mayor o menor proporción de bytes de transferencia)
+
+![74](75.png)
+
+La manera de trabajar de ECMP tiene diferntes modos y solo se puede ver a través de la CLI.
+
+Con este comando podemos revisar de que manera está trabajando el ECMP actualmente.
+
+Y lo que indica el Source-ip-based, es que hace una especie de sorte por ejemplo al querer navegar a través de google.com siempre va a salir de ese puerto, si ponemos yahoo.com y de nuevo escoge ese puerto de nuevo va salir por el ISP1, ahora si navegamos en altavista.com y sale por el ISP2 siempre va salir por ese puerto desde ese momento y no se va a modificar.
+
+```
+SITE-B (settings) # get | grep ecmp
+v4-ecmp-mode        : source-ip-based 
+ecmp-max-paths      : 255
+``` 
+
+Con este comando podemos ver las opciones en la que puede trabajar el ECMP
+
+```
+SITE-B (settings) # set v4-ecmp-mode 
+source-ip-based         Select next hop based on source IP.
+weight-based            Select next hop based on weight.
+usage-based             Select next hop based on usage.
+source-dest-ip-based    Select next hop based on both source and destination IPs.
+```
+
+Lo que nosotros queremos es que el "sorte" se haga en cualquier ISP, por ejemplo si ponemos google.com salga en este momento por ISP1 y al volver a navegar ahora va salir por ISP2.
+
+Para hacer esto necesitamos del source-dest-ip-based
+```
+SITE-B # conf systems settings
+SITE-B (settings) # set v4-ecmp-mode source-dest-ip-based 
+
+SITE-B (settings) # end
+```
+Ahora si hacemos una prueba con ping a google.com, yahoo.com, apple.com
+
+Nos va a mostrar lo siguiente
+![75](76.png)
+
+Y si nos vamos a Dashboard->FortiView Sessión veremos que toma distintos puertos para la salida
+![76](77.png)
+
+## Healthy Link Monitor
+
+Sirven para programar monitoreo sobre los enlaces, esto quiere decir algún enlace SP1 o SP2 tiene alguna falla por ejemplo que el cable se rompa, podemos utilizar el otro servicio disponible o backup.
+
+Para hacer esta prueba vamos a ingresar a nuestro mikrotik 
+
+Una vez dentro presionamos enter y luego /ip addres, después print para saber los valores de los puertos.
+y cambios la IP funcional
+```
+set address = 200.212.31.2/30 numbers=0
+```
+Por esta.
+```
+set address = 200.212.30.2/30 numbers=0
+```
+![77](78.png)
+
+Despues realizamos un ping a google y no inidicará que no hace ping, y es aquí dónde preguntamos ¿porqué no hace el cambio automático?
+```
+SITE-A # exec ping google.com
+Unable to resolve hostname.
+```
+Enonces lo que tenemos que hacer son unos cambios a través del CLI(única opción) ingresmaos con los siguientes comandos
+
+```
+SITE-A # conf syst link-monitor 
+
+SITE-A (link-monitor) # show
+config system link-monitor
+end
+
+SITE-A (link-monitor) # edit 1
+new entry '1' added
+
+SITE-A (1) # get 
+name                : 1
+addr-mode           : ipv4 
+srcintf             : 
+server-config       : default 
+server              :
+protocol            : ping 
+gateway-ip          : 0.0.0.0
+route               :
+source-ip           : 0.0.0.0
+interval            : 500
+probe-timeout       : 500
+failtime            : 5
+recoverytime        : 5
+probe-count         : 30
+ha-priority         : 1
+update-cascade-interface: enable 
+update-static-route : enable 
+update-policy-route : enable 
+status              : enable 
+diffservcode        : 000000
+class-id            : 0
+service-detection   : disable 
+         
+
+SITE-A (1) # set protocol 
+ping        PING link monitor.
+tcp-echo    TCP echo link monitor.
+udp-echo    UDP echo link monitor.
+http        HTTP-GET link monitor.
+twamp       TWAMP link monitor.
+ 
+SITE-A (1) # set srcintf port2
+
+SITE-A (1) # set server 8.8.8.8
+
+SITE-A (1) # set gateway-ip 200.212.31.2
+
+SITE-A (1) # show
+config system link-monitor
+    edit "1"
+        set srcintf "port2"
+        set server "8.8.8.8"
+        set gateway-ip 200.212.31.2
+    next
+end
+
+SITE-A (1) # end
+```
+Después volvemos hacer ping y ya recibimos respuesta y revisamos con el CLI y podremos ver que le puerto 2 esta inactivo, y ahora el que está en uso es el puerto 3.
+
+```
+SITE-A # get router  info routing-table database 
+Codes: K - kernel, C - connected, S - static, R - RIP, B - BGP
+       O - OSPF, IA - OSPF inter area
+       N1 - OSPF NSSA external type 1, N2 - OSPF NSSA external type 2
+       E1 - OSPF external type 1, E2 - OSPF external type 2
+       i - IS-IS, L1 - IS-IS level-1, L2 - IS-IS level-2, ia - IS-IS inter area
+       > - selected route, * - FIB route, p - stale info
+
+Routing table for VRF=0
+S    *> 0.0.0.0/0 [15/0] via 180.45.22.2, port3, [5/0]
+S       0.0.0.0/0 [10/0] via 200.212.31.2, port2 inactive, [5/0]
+C    *> 10.0.1.0/24 is directly connected, port4
+C    *> 180.45.22.0/30 is directly connected, port3
+C    *> 192.168.1.0/24 is directly connected, port1
+C    *> 200.212.31.0/30 is directly connected, port2
+
+
+SITE-A # 
+```
+
+## Packet Sniffer por CLI
+```
+SITE-A # diagnose sniffer packet port4 icmp
+Using Original Sniffing Mode
+interfaces=[port4]
+filters=[icmp]
+14.061164 10.0.1.10 -> 8.8.8.8: icmp: echo request
+14.072057 8.8.8.8 -> 10.0.1.10: icmp: echo reply
+15.082424 10.0.1.10 -> 8.8.8.8: icmp: echo request
+15.094323 8.8.8.8 -> 10.0.1.10: icmp: echo reply
+16.121377 10.0.1.10 -> 8.8.8.8: icmp: echo request
+16.131998 8.8.8.8 -> 10.0.1.10: icmp: echo reply
+17.136812 10.0.1.10 -> 8.8.8.8: icmp: echo request
+17.148429 8.8.8.8 -> 10.0.1.10: icmp: echo reply
+38.363189 10.0.1.10 -> 8.8.8.8: icmp: echo request
+38.374271 8.8.8.8 -> 10.0.1.10: icmp: echo reply
+39.390959 10.0.1.10 -> 8.8.8.8: icmp: echo request
+39.401555 8.8.8.8 -> 10.0.1.10: icmp: echo reply
+40.409235 10.0.1.10 -> 8.8.8.8: icmp: echo request
+40.424508 8.8.8.8 -> 10.0.1.10: icmp: echo reply
+41.422689 10.0.1.10 -> 8.8.8.8: icmp: echo request
+41.435227 8.8.8.8 -> 10.0.1.10: icmp: echo reply
+236.223140 10.0.1.10 -> 1.1.1.1: icmp: 10.0.1.10 udp port 60614 unreachable
+```
+
+Ahora cuando hacemos un ping como prueba en el CLI se ve que está apuntado hacía ping google.com
+![78](79.png)
+
+Pero si voy a google.com a través del navegador nos indica que es inalcanzable
+
+```
+365.857297 10.0.1.10 -> 1.1.1.1: icmp: 10.0.1.10 udp port 59754 unreachable
+```
+Podemos agregar más cosas a nuestro sniffer, en este caso solo esta analizando la computadora con la ip 10.0.1.10
+```
+SITE-A # diagnose sniffer packet port4 "icmp && src host 10.0.1.10"
+Using Original Sniffing Mode
+interfaces=[port4]
+filters=[icmp && src host 10.0.1.10]
+16.619767 10.0.1.10 -> 172.217.15.14: icmp: echo request
+17.639169 10.0.1.10 -> 172.217.15.14: icmp: echo request
+18.675029 10.0.1.10 -> 172.217.15.14: icmp: echo request
+19.724220 10.0.1.10 -> 172.217.15.14: icmp: echo request
+^C
+4 packets received by filter
+0 packets dropped by kernel
+
+SITE-A # diagnose sniffer packet port4 "icmp && dst host 10.0.1.10"
+Using Original Sniffing Mode
+interfaces=[port4]
+filters=[icmp && dst host 10.0.1.10]
+3.822961 172.217.15.14 -> 10.0.1.10: icmp: echo reply
+4.843801 172.217.15.14 -> 10.0.1.10: icmp: echo reply
+5.886665 172.217.15.14 -> 10.0.1.10: icmp: echo reply
+6.919011 172.217.15.14 -> 10.0.1.10: icmp: echo reply
+```
+Podemos revisar también los puertos UDP y el puerto especificado en este caso 53
+
+```
+SITE-A # diagnose sniffer packet port4 "udp && port 53 && host 10.0.1.10"
+Using Original Sniffing Mode
+interfaces=[port4]
+filters=[udp && port 53 && host 10.0.1.10]
+0.911310 8.8.8.8.53 -> 10.0.1.10.60440: udp 110
+0.919013 8.8.8.8.53 -> 10.0.1.10.63251: udp 37
+0.921444 10.0.1.10.50324 -> 8.8.8.8.53: udp 35
+1.008526 10.0.1.10.50324 -> 1.1.1.1.53: udp 35
+1.017433 8.8.8.8.53 -> 10.0.1.10.50324: udp 35
+1.030162 10.0.1.10.62335 -> 8.8.8.8.53: udp 33
+1.069049 1.1.1.1.53 -> 10.0.1.10.50324: udp 35
+1.083327 8.8.8.8.53 -> 10.0.1.10.62335: udp 33
+1.085224 10.0.1.10.49216 -> 8.8.8.8.53: udp 30
+1.089580 8.8.8.8.53 -> 10.0.1.10.49216: udp 98
+1.134984 10.0.1.10.64369 -> 8.8.8.8.53: udp 30
+1.188834 8.8.8.8.53 -> 10.0.1.10.64369: udp 105
+1.193086 10.0.1.10.64235 -> 8.8.8.8.53: udp 40
+1.261943 8.8.8.8.53 -> 10.0.1.10.64235: udp 115
+1.265766 10.0.1.10.59754 -> 8.8.8.8.53: udp 45
+1.324262 8.8.8.8.53 -> 10.0.1.10.59754: udp 120
+1.328335 10.0.1.10.61434 -> 8.8.8.8.53: udp 45
+1.380075 8.8.8.8.53 -> 10.0.1.10.61434: udp 120
+39.089174 10.0.1.10.59754 -> 8.8.8.8.53: udp 27
+39.145392 8.8.8.8.53 -> 10.0.1.10.59754: udp 43
+^C
+20 packets received by filter
+0 packets dropped by kernel
+
+SITE-A #
+
+Nota: Revisar el documento de verbosidad.
+```
+## SD-WAN (Software Define WAN - Acceso a internet definido por software)
+
+What is SD-WAN
+ *Virtual interface consisting of a group of member interfaces that can be connected to different link types
+ *Allows affective WAN usage with various load balancing algorithms
+ *Supports link Quality measurement
+   *Dynamic link selection based on link quality
+   *Ensurance high availibility of business-critical applications
+
+SDWAN lo encontramos en Network->SD-WAN
+Vamos a encontrar tres opciones 
+- SD-WAN Zones
+- SD-WAN Rules
+- SD-WAN SLAs
+
+En este ejemplo vamos a ocupar SD-WAN Zones ahora vamos a dar click en CREATE NEW y encontramos otras dos opciones 
+- SD-WAN Member 
+- SD-WAN Zone
+
+Seleccionamos SD-WAN Zone y ingreamos el nombre SDWAN-LAN y click en ok
+![80](81.png)
+
+En la opción de Interface members click en plus (+) y en la opción seleccionar entrada click en CREATE  y rellenamos los datos solicitados
+
+
+```
+INTERFACE:ISP1(Port2)
+SD-WAN Zone:SDWAN-LAN
+Gateway:200.212.31.12
+
+Click en ok
+```
+![81](82.png)
+
+```
+INTERFACE:ISP2(Port3)
+SD-WAN Zone:SDWAN-LAN
+Gateway:180.45.22.2
+
+Click en ok
+```
+![82](83.png)
+
+Ahora se tienen que crear una ruta estatica y ponemos los datos solicitados
+```
+Subnet:0.0.0.0/0.0.0.0
+Interface:SD-WAN-LAN 
+Estatus:Enabled
+
+Click en ok
+```
+![83](84.png)
+
+Ahora vamos a crear una nueva firewall policy
+
+```
+Name:INTERNET-SDWAN
+Incoming:LAN4
+outgoing:SDWAN-LAN
+Source:all
+Destination:all
+Schedule:Always
+service:all
+NAT:Enable
+
+Click en ok
+```
+![84](85.png)
+
+ahora probamos en el servidor el internet con un ping y con el navegador y verificamos que funciona.
