@@ -2071,3 +2071,172 @@ Click en ok
 ![84](85.png)
 
 ahora probamos en el servidor el internet con un ping y con el navegador y verificamos que funciona.
+
+## SD-WAN Performance SLAs
+Son testigos para probar nuestos ISP's esten funcionando correctamente y no esten caidos, ya hay algunas opciones como la de amazon.
+con
+
+## SD-WAN Rules
+
+SD-WAN->SD-WAN Rules->crear nuevo
+![87](88.png)
+
+Nos mostrará cuál es la mejor opción para el transito de datos por algún puerto.
+![88](89.png)
+
+## VDOMS
+
+![89](90.png)
+
+![90](91.png)
+
+![91](92.png)
+
+![92](93.png)
+
+![93](94.png)
+
+Lamentablemente en el Laboratorio no se puede implentar así que el profe lo hace directamente en su equipo físco y serán puras capturas de pantalla.
+
+Para crear los VDOM's se realiza de manera gráfica.
+System->Settings
+sin embargo con ese equipo físco no permite hacerlo de manera gráfica
+![94](95.png)
+
+Por lo tanto se realizará de manera de consola.
+>config system global
+(global)set vdom-mode ?
+
+![95](96.png)
+
+
+Ahora en la parte susperio podremos ver la opción de VDOM
+
+![96](97.png)
+
+## VLANS
+
+![97](98.png)
+
+En este laboratorio se van agregar Vlans 
+
+![98](99.png)
+
+Y esta es la configuración de cada  SW cisco
+
+```
+#CONFIGURACION SWITCH A
+
+enable
+configure terminal
+vlan 101
+name Legales
+exit
+vlan 102
+name Contable
+exit
+interface gigabitEthernet 0/1
+switchport mode access
+switchport access vlan 101
+exit
+interface gigabitEthernet 0/2
+switchport mode access
+switchport access vlan 102
+exit
+interface gigabitEthernet 0/0
+switchport trunk encapsulation dot1q
+switchport mode trunk
+end
+
+
+
+#CONFIGURACION SWITCH B
+
+enable
+configure terminal
+vlan 103
+name Sistemas
+exit
+interface gigabitEthernet 0/1
+switchport mode access
+switchport access vlan 103
+exit
+interface gigabitEthernet 0/0
+switchport trunk encapsulation dot1q
+switchport mode trunk
+end
+```
+
+Una vez configurada las vlans en los Sw's ahora vamos a configurar en el equipo FG
+
+Network->Interfaces->Create new Interfaces (x3)
+```
+1)
+Name:Legales
+Type:Vlan
+Vlan Protocol:802Q
+Port2
+Vlan Id:101
+Role:Lan
+IP:172.21.0.254/24
+habilitamos ping
+
+2)
+Name:Contable
+Type:Vlan
+802Q
+Port2
+Vlan Id:102
+Role:Lan
+IP:172.22.0.254/24
+habilitamos ping
+
+3)
+Name:Sistemas
+Type:Vlan
+802Q
+Port3
+Vlan Id:103
+Role:Lan
+IP:172.23.0.254/24
+habilitamos ping
+```
+
+![99](100.png)
+
+
+Ahora nos vamos a Policy & Objects -> Firewall policy->Create New
+
+```
+Name:Lagales->Sistemas
+Icoming:Legales
+Outgoing:Sistemas
+Source:all
+Destination.all
+Nat:Disable
+
+Ahora vamos con botón derecho aplicamos en Clone reverso y renombrar 
+
+Sistemas->Legales
+```
+
+![100](101.png)
+
+Ahora si hacemos un ping obtendremos respuesta:
+```
+PC-LAN-102> ping 172.22.0.254
+
+84 bytes from 172.22.0.254 icmp_seq=1 ttl=255 time=3.340 ms
+84 bytes from 172.22.0.254 icmp_seq=2 ttl=255 time=9.338 ms
+84 bytes from 172.22.0.254 icmp_seq=3 ttl=255 time=4.445 ms
+84 bytes from 172.22.0.254 icmp_seq=4 ttl=255 time=4.386 ms
+84 bytes from 172.22.0.254 icmp_seq=5 ttl=255 time=3.250 ms
+
+PC-LAN-102> ping 172.22.0.1
+
+172.22.0.1 icmp_seq=1 ttl=64 time=0.001 ms
+172.22.0.1 icmp_seq=2 ttl=64 time=0.001 ms
+172.22.0.1 icmp_seq=3 ttl=64 time=0.001 ms
+172.22.0.1 icmp_seq=4 ttl=64 time=0.001 ms
+172.22.0.1 icmp_seq=5 ttl=64 time=0.001 ms
+```

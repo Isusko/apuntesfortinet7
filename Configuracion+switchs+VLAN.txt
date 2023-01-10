@@ -1,0 +1,40 @@
+#CONFIGURACION SWITCH A
+
+enable
+configure terminal
+vlan 101
+name Legales
+exit
+vlan 102
+name Contable
+exit
+interface gigabitEthernet 0/1
+switchport mode access
+switchport access vlan 101
+exit
+interface gigabitEthernet 0/2
+switchport mode access
+switchport access vlan 102
+exit
+interface gigabitEthernet 0/0
+switchport trunk encapsulation dot1q
+switchport mode trunk
+end
+
+
+
+#CONFIGURACION SWITCH B
+
+enable
+configure terminal
+vlan 103
+name Sistemas
+exit
+interface gigabitEthernet 0/1
+switchport mode access
+switchport access vlan 103
+exit
+interface gigabitEthernet 0/0
+switchport trunk encapsulation dot1q
+switchport mode trunk
+end
