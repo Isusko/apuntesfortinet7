@@ -2021,6 +2021,7 @@ En este ejemplo vamos a ocupar SD-WAN Zones ahora vamos a dar click en CREATE NE
 - SD-WAN Zone
 
 Seleccionamos SD-WAN Zone y ingreamos el nombre SDWAN-LAN y click en ok
+
 ![80](81.png)
 
 En la opción de Interface members click en plus (+) y en la opción seleccionar entrada click en CREATE  y rellenamos los datos solicitados
@@ -3094,3 +3095,449 @@ Secondary: FGVMEV84EONV3LE8, HA operating index = 1
 ![130](131.png)
 
 ![131](132.png)
+
+```
+VPN -> Ipsec Wizard->Custom
+
+Name:vSITEb 
+
+Romete Gateway:Static Ip
+IP Address:60.89.123.1
+Interface: ISP1
+NAT:Disable(en este ejemplo no se útiliza)
+Dead Peer Detection: on Demand
+Forward error conection: no check
+
+Authentication:
+Method:Pre-shared  key: password
+version:1
+mode:Main(ID protection)
+
+Phase 1
+Encryption:DES Authentication:check deffe-heltman group(2)
+Lifetime:86400
+
+Phase 2 selectors:
+name:v2SITEb
+Local Address:10.0.1.0/24
+Remote Addres:10.0.2.0/24
+Phase Proposal:
+Encryption:DES Authentication:MD5
+Enable Replay Detection: check
+
+Enable Perfect Foeward Secrecey (PFS):
+Deffe-Heltman Group: (2)
+Local port: all
+Remote Port: all
+Protocol:all
+Auto-negotiation: check
+Lifetime:43200
+
+Guardar
+
+También configuramos el FGB
+Name:vSITEa 
+
+Romete Gateway:Static Ip
+IP Address:200.2112.31.1
+
+Phase 2 selectors:
+name:v2SITEb
+Local Address:10.0.2.0/24
+Remote Addres:10.0.1.0/24
+```
+
+![132](133.png)
+
+Después de eso se tiene que crear una ruta estatica
+```
+Network->Statics Routes
+
+```
+
+![133](134.png)
+
+```
+TIP:No es obligatorio pero Es muy recomendable usar, Static Routes:
+
+Network->Static Routes 
+Subjet
+IP:10.0.2.0/24
+Interface:Blackhole
+Administrative distance:254 
+Click en ok
+```
+
+![134](135.png)
+
+
+Necesitamos agregar una policy con reversa en ambos FG
+
+![135](136.png)
+
+![136](137.png)
+
+##Failover entre 2 tunels
+
+Se hace lo mismo pero ahora con el otro puerto de enlace.
+
+## Autenticación Activa
+Para crear el primer ejemplo nos vamos a:
+```
+User&Autentication->User Definition->Local User->Ponemos un usuario y contraseña->User Account Status
+
+Luego establecemos una politica
+Firewall policy-> Aquí ya existe una politica llamada Internet-SDWAN(ya se había establecido con anterioridad) en la parte de source tenemos Active directory pues aquí vamos a agregar a nuestro usarios creado en este caso llamado Sbrv.
+
+```
+Como vemos nos pide usario y contraseña para poder navegar
+![138](139.png)
+
+## Active directory
+
+En el siguiente ejemplo se realizará a través de un controlador de dominio.
+
+En nuestro laborario, ya existen en el servidor en el grupo user dos usuarios llamado user1,user2 y user3 esto lo vemos desde el active directory user and computers, y dentro de este directorio hay un grupo llamado VIP en el cual están los usuarios 1 y 2, pero no al 3.
+
+![139](140.png)
+
+```
+Ahora nos vamos al FG User&Authentication->LDAP Servers->Create New
+
+Name:LDAP
+SERVER IP/NAME:10.0.1.10
+Server port:389
+Common Name Identifier:SAMAccountName
+Bind Tyoe: Regular
+username:ADATUM\Administrator (dato del servidor)
+Pass:Pa$$w0rd (dato del servidor)
+
+Click en Testconnectivity, revisamos que diga Successful
+
+Luego regresamos a en donde dice:Disinguished Name: click en browse y seleccionamos la raiz del dominio o el primer dato mostrado.
+
+click en ok
+```
+![140](141.png)
+
+```
+Ahora en User defition -> Remote LDAP user
+Next 
+Seleccionamos el servidor LDAP que acabamos de agregar
+
+Y ahora buscamos los usuarios y agregamos los usaurios y click en submit
+```
+![141](142.png)
+
+
+```
+Después vamos a Firewall policy y source click en editar,user y seleccionamos de la lista LDAP el usario agregado(s)
+```
+```
+Después vamos al servidor y al tratar de navegar nos pide el usuario y contraseña, lo ponemos y nos regresamos a nuestro FG y nos vamos a user&devices y podremos ver el usuario.
+```
+A veces no redirecciona correctamente a la pagina web así que tenemos que hacer refresh o buscar una pagina y ya no nos pedira el password
+![142](143.png)
+
+##  Fortinet Single Sign-On (FSSO)-Usando DC Agent y Collector Agent
+
+### Dc Agent Mode Process(el mas útilzado)
+![143](144.png)
+
+Los 2 elementos (1 DC Agent y 2 Collector Agent)se instalan en el controlador de domino
+
+Para instala el sofware en el escritorio del servidior hay un archivo llamado FFSO_Setup ejecutamos nos pedira el usuario del administrador del dominio, corremos con los archivos seleccionador por default siguiente
+
+![146](147.png)
+
+Finish(launch habilitado), siguiente(datos por default si es el mismo equipo que estamos ejecutando o sino la ip correspondiente), en este labortatorio es next en caso real depende que dominios y usuarios deseamos monitorear
+![147](148.png)
+
+En esta parte nos cuestiona en que modo deseamos trabajar en este caso DC Agent
+![148](149.png)
+
+Nota: Tomar en cuenta que en modo productivo nos solicita reiniciar el equipo.
+![149](150.png)
+
+Una vez que sereiniciao buscamos el aplicactivo que se llama configure fortinet sign on
+
+![150](151.png)
+
+Check en Authentication y la password:1234567,Dead entry timeout interval:60
+```
+Ahora ingresamos al FG-A y nos vamos a Security Fabric->External connectors->Create New->Selec FSSO de FG
+```
+![151](152.png)
+```
+Name:AD
+Primary fSSO agent:10.0.1.10
+Pass:1234567 (debe de ser el passw del programa de FG no el password de administrador del equipo)
+user groupsource:Collector Agent
+Click en apply &Refresh y nos mostrará la cantidad de usuario o grupos que encontró
+```
+![152](153.png)
+```
+Una vez que ya se puso en verde el icono del FFSO nos vamos ahora a
+Firewall Policy->vamos a editar el source y seleccionamos la opción User->seleccionamos ADATUM/VIP y click en ok
+
+Ahora cualquier usuario que pertenezca al grupo VIP podra navegar (usuaio 1,2)
+
+ahora vamos al servidor e iniciamos con otro usuario y probamos
+
+Regresamos al forti
+Log&Report->eventos->Userevents podremos ver que el usuario 1 ya ingreso
+
+También lo podemos ver desde dashboard->User&Devices->Firewallusers->click en show all FFSO logons
+
+Si hacemos prueba con el usuario 3, no nos dejará navegar.
+```
+![153](154.png)
+
+![154](155.png)
+
+
+### Collector Agent-Based Polling Mode Process
+
+![144](145.png)
+
+En esta prueba usamos el mismo external connectors de la anterior prueba.
+
+Para esta practica desde el usaurio administrator en el servidor vamos a desintalar el DC Agent (unistallar DC Agent) pero el collecto lo vamos a dejar, también requiere reinicio del controlador de dominio
+
+Después del reinicio abrimos nuestro Agent configuration y vamos a dar click en Show Monitored DCs, click en Select DC
+
+Ahí seleccionamos Pollig mode y check Windows (WMI) ya que es la más actual y hace un check cada 3 min.
+
+Click en ok y después en Refresh
+
+
+![155](156.png)
+```
+Ahora click en set group filter->Add->check Default filter->click en Advance->desplegamos la lista de ADATUM y check en VIP->click en Add selected user groups
+```
+
+![156](157.png)
+
+
+También podemos configurar la opcion ignore user list
+click en Add User->user2, aquí no funciona este filtro debido a que el filtro da prioridad a la ip y no al nombre de usuario.
+
+### Agentless Polling Mode Process
+
+![145](146.png)
+![157](158.png)
+Aquí no hay software 
+
+Para esta pruba vamos a desintalar Fortinet SSOy en la parte de external conectors no necesitamos la anterior ya que vamos a crear uno.
+
+```
+External Connector->New->Poll ACtive Directory Server
+IP:10.0.1.10
+user:adatum\administrator
+Password:Pa$$w0rd
+LDAP SERVER:lADP (el mismo de clases anteriores.)
+Enable poling:enable
+user/groups-> click en edit
+
+Aquí podemos escoger un grupo o un usuario.
+
+click en ok, de nuevo se pondrá como activo
+```
+
+```
+Firewall policy->source->user->Local FSSO Agent-> seleccionamos los dos
+```
+
+## Nueva funcionlidad- Configuración save mode
+
+Esto sirve para confirmar los cambios, por ejemplo si cambio una ip y no tiene el resultado deseado, me quedo fuera del equipo y en caso de que este en otro sitio y no dónde se encutra nuestro FG tendría que transladarme hasta ahí y realizar las modificaciones pertinentes pero con esta función de acuerdo al tiempo que le demos para confirmar por ejmplo 1 minuto y no confirmamos restaurará la ip original y volveremos acceder.
+
+```
+System-> settings y ahí buscamos configuration save y mode por defecto viene como automatico debemos de cambiarlo a workpspace.
+
+en Timeout: 60(son los segudos que esperará para revertir los cambios) 
+```
+## Comandos+para+diagnostico
+
+
+![169](170.png)
+
+```
+Como vemos en este ejemplo el mode de conservación de memoria está desactivado
+
+SITE-A # diagnose hardware sysinfo conserve 
+memory conserve mode:                        off
+total RAM:                                          997 MB
+memory used:                                        749 MB   75% of total RAM
+memory freeable:                                    141 MB   14% of total RAM
+memory used + freeable threshold extreme:           947 MB   95% of total RAM
+memory used threshold red:                          877 MB   88% of total RAM
+memory used threshold green: 
+```
+```
+si la interface de red tuviera un error lo vemos en
+RX erro, tx error, collision 
+
+SITE-A # diagnose hardware deviceinfo nic port1
+Name:            port1
+Driver:          e1000
+Version:         7.3.21-k8-NAPI
+Bus:             0000:00:03.0
+Hwaddr:          0c:f1:5f:60:00:00
+Permanent Hwaddr:0c:f1:5f:60:00:00
+State:           up
+Link:            up
+Mtu:             1500
+Supported:       auto 10half 10full 100half 100full 1000full
+Advertised:      auto 10half 10full 100half 100full 1000full
+Speed:           1000full
+Auto:            enabled
+RX Ring:                 256
+TX Ring:                 256
+Rx packets:              110049
+Rx bytes:                17643101
+Rx compressed:           0
+Rx dropped:              0
+Rx errors:               102307
+  Rx Length err:         102307
+  Rx Buf overflow:       0
+  Rx Crc err:            0
+  Rx Frame err:          0
+  Rx Fifo overrun:       0
+  Rx Missed packets:     0
+Tx packets:              15008
+Tx bytes:                5428703
+Tx compressed:           0
+Tx dropped:              0
+Tx errors:               0
+  Tx Aborted err:        0
+  Tx Carrier err:        0
+  Tx Fifo overrun:       0
+  Tx Heartbeat err:      0
+  Tx Window err:         0
+Multicasts:              0
+Collisions: 
+```
+```
+SITE-A #diagnose sys top
+Run Time:  1 days, 0 hours and 35 minutes
+0U, 0N, 1S, 93I, 1WA, 4HI, 0SI, 1ST; 997T, 105F
+       ipshelper     7898      S <     0.7     3.6    0
+          lnkmtd     7923      S       0.5     1.2    0
+            node     7887      S       0.3     6.2    0
+       forticron     7895      S       0.3     3.7    0
+          httpsd    11447      S       0.1     1.7    0
+          fcnacd     7903      S       0.1     1.1    0
+  merged_daemons     7891      R       0.1     0.8    0
+         cmdbsvr      117      S       0.0     3.7    0
+         src-vis     7917      S       0.0     2.8    0
+          cw_acd     7947      S       0.0     2.4    0
+         reportd     7906      S       0.0     2.3    0
+         miglogd     7905      S       0.0     2.1    0
+          httpsd     7886      S       0.0     2.1    0
+          newcli    11419      S       0.0     2.0    0
+           fgfmd     7946      S       0.0     1.9    0
+       forticldd     7896      S       0.0     1.8    0
+        dnsproxy     7938      S       0.0     1.7    0
+         miglogd     7964      S       0.0     1.6    0
+ initXXXXXXXXXXX        1      S       0.0     1.6    0
+           authd     7897      S       0.0     1.4    0
+
+Para matar un proceso que nos este causando error hacemos
+SITE-A #diagnose kill 11 + PID (7897)
+
+```
+```
+#############################
+          IPSEC
+#############################
+
+diagnose debug disable
+diagnose vpn ike log filter clear
+diagnose vpn ike log filter name <phase1-name>
+diagnose debug application ike -1
+diagnose debug enable
+
+diagnose debug reset
+diagnose debug disable
+
+#############################
+      Traffic Flow
+#############################
+
+diagnose debug disable 
+diagnose debug flow trace stop 
+diagnose debug flow filter clear 
+diagnose debug reset 
+
+diagnose debug flow filter saddr 10.0.1.10
+diagnose debug flow filter daddr 8.8.8.8
+diagnose debug flow show function-name enable
+diagnose debug console timestamp enable
+diagnose debug flow trace start 999
+diagnose debug enable
+```
+
+Nueva funcionalidad CLI
+```
+Auditar todas las acciones que se ejecutan en la CLI
+config sys global
+get | group cli
+set cli-audit-log enable
+end
+```
+
+
+## Port forwarding mediante objetos VIPs
+Ejemplo de como trabaja el forwarding de entrada y salida
+
+![158](159.png)
+
+```
+Para hacer el siguiente laboratorio tenemos que itnod s 
+Policy&Objets->Virtual IPs->Create New->Virtual IP
+Name:ISS
+Interface ISP1 (Pdemos seleccionar todos any pero aquí solo el ISP1)
+Type: Static NAT->ISP1(no permite SDWAN)
+External addres/Range:200.212.31.1
+MAP To:10.0.1.10 (Es esta IP porqué es el servidor puede ser un servidor de telefonico etc)
+Port Forwardo -> Enable->External Service Port 85 MAP to IPv4 port:80 (tiene que ser el puerto real)
+
+```
+![150](160.png)
+```
+Vamos Policy, Creamos una nueva policy o botón derecho sobre el anterio VIPs crado click sobre crear firewall policy using this object
+Name:ISS
+Incoming Interface:SDWAN-LAB (lo pone por default)
+Outgoing:LAN (Poart4)
+Source:all
+Destination:ISS (lo pone por default)
+Service:HTTP
+NAT:Disable
+```
+Si vamos al windows 7 y nos tratamos de conectar al servidor podremos acceder sin problemas
+
+![160](161.png)
+
+En el siguiente laboratorio tenemos que borrar el IPs del proyecto anterior así como las policy.
+
+## Configurar NAT mediante IP Pools
+
+```
+Vamos a Policy&Objects->IP POOLS
+
+Name:Pool
+Type: existen 4 tipos 
+- Overload
+-One to One
+-Fixed port range
+-Port block allocation
+
+*Overload:200.212.31.20-200.212.31.30
+Siempre vamos a tener más redes privadas en uso que las públicas.
+
+
+
+
+
+```
