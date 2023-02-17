@@ -3535,9 +3535,243 @@ Type: existen 4 tipos
 
 *Overload:200.212.31.20-200.212.31.30
 Siempre vamos a tener más redes privadas en uso que las públicas.
+Muchas direcciones privadas -> pocas redes públicas
+
+aceptamos el objeto y en la policy hacemos lo siguiente:
+en donde dice Ip pool configuation->Use Dynamic IP Pool y seleccionamos la pool que nos muestra
+
+ARP:ENABLE(por default)
+```
+![161](162.png)
+
+Ahora vamos a equipo de internet.
+```
+Que es un mikrotik
+User:admin
+Pass:Fortinet1!
+
+y módificamos lo siguiente la IP del indicador 0
+
+[admin@INTERNET] > /ip address
+[admin@INTERNET] /ip address> print
+Flags: X - disabled, I - invalid, D - dynamic
+ #   ADDRESS            NETWORK         INTERFACE
+ 0   200.212.31.2/30    200.212.31.0    ether2
+ 1   180.45.22.2/30     180.45.22.0     ether3
+ 2   60.89.123.2/30     60.89.123.0     ether4
+ 3   45.32.12.2/30      45.32.12.0      ether5
+ 4 D 192.168.1.167/24   192.168.1.0     ether1
+[admin@INTERNET] /ip address> set address=200.212.31.254/24 numbers=0
+[admin@INTERNET] /ip address> print
+Flags: X - disabled, I - invalid, D - dynamic
+ #   ADDRESS            NETWORK         INTERFACE
+ 0   200.212.31.254/24  200.212.31.0    ether2
+ 1   180.45.22.2/30     180.45.22.0     ether3
+ 2   60.89.123.2/30     60.89.123.0     ether4
+ 3   45.32.12.2/30      45.32.12.0      ether5
+ 4 D 192.168.1.167/24   192.168.1.0     ether1
+[admin@INTERNET] /ip address>
+```
+```
+Ahora ingresamos a nuestro FG-A ->SD-WAN ->modificamos el gateway del ISP1(port2) y deshabilitamos el ISP2
+
+A continuación nos vamos a nuestro controlador de dominio (server) y probamos la salida a internet y debemos tener salida.
+
+Y podemos rectificarlo en nuestor FG-A con el siguiente comando:
+SITE-A # get syste session list
+PROTO   EXPIRE SOURCE           SOURCE-NAT       DESTINATION      DESTINATION-NAT 
+tcp     3570   10.0.1.10:49378  200.212.31.1:49378 172.217.3.131:443 -               
+tcp     3570   10.0.1.10:49395  200.212.31.1:49395 172.217.3.142:443 -               
 
 
+sin nos fijamos está utilzando en la source nat una de las ip que pusimos en el pool.
+```
+```
+*One-to-One:200.212.31.20-200.212.31.20 (en este modo se utiliza una sola ip, aunque usemos una sola ip debemos expresarlo en modo de rango)
 
+Para esta practica vamos a matar todas las sesiones y para eso nos vamos Dashboard->Fortview sessions->botón derecho->end all sessions
 
+y para matar las sesiones a través de la CLI (FG-A)SITE-A # diagnose sys session clear
+```
+Ahora vamos agregar un sw y una pc.
+
+![162](163.png)
+
+Y como vemos solo puede navegar el controlador de dominio y no la pc agregadam,ademas en la policy nos indicará que todas las IP han sido utilizadas y no tenemos ni una ip disponible en el pool, ahora si deamos aumentar la ip disponibles:
+200.212.31.20-200.212.31.21, podremos salir a internet en ambos equipos
+```
+*Fixed pport Range:200.212.31.20-200.212.31.21
+Internet Ip Range:10.0.1.15-10.0.1.16
+es similar a One-to-one la diferencia rádica en que podemos restringir las ip privadas que tendrán salida a internet. 
+```
 
 ```
+*Port Block Allocation:200.212.31.20-200.212.31.21 (ip publicas)
+Block Size:128 (cuentos puertos puede utilizar el pool) por defecto son 128
+Block Per User:8 (Por cada dirección privda de nuestra red cuantos puertos de esos 128 puede utilizar esa ip, o cuantas sesiones puede crear cada computadora de nuestra lan)
+```
+
+## Caso Práctico:IPSEC entre empresa con la misma subet
+
+qué pasa cuando queremos establecer un tunel IPSEC entre dos redes cuya red privada tiene el mismo segmento de red.
+ejemplo: 192.168.0.0/24
+
+Lo recomendable es segmetar las redes privadas de cada sitio por ejemplo podemos usar otro:192.168.89.0/24
+
+Entonces para este ejemplo Los FORTIES FG-A y FG-B tendran la mismo gateway 10.0.1.254, así mismo como el controlador de domino (windows server) y la pc (windows 7) 10.0.1.10
+
+```
+FG-B
+Ahora nos vamos a IPsec Wizard->Custom
+Name:Site-A
+Remote Gateway:Static IP Address
+IP Address:200.212.31.1
+Interface:ISP-1(Port2)
+NAT Transversal:Disable
+Dead Peer Detection:On Demand
+DPD retry count:3
+DPD retry:20
+Pre-sharedkey:1234567
+Version:1
+Mode: Main(ID Protection)
+DES/MD5:2
+Ojo, Aquí no funcionaría debido a que son iguales 
+Local Address: subnet: 10.0.1.10/24
+Remote Address:subnet 10.0.1.10/24
+
+Entonces para solucionar el problema tenemos que asignar IP ficticias y apuntado hacía toda la red local contra toda la red remota
+
+Local Address: subnet: 172.22.0.0/24 (SITE B)
+Remote Address:subnet 172.21.0.0/24 (SITE A)
+
+Advance:
+DES/MD5:2
+Enable Replay Detection:check
+Enable perfect forward secrecy (PFS):check
+Local Port:all
+Remote port :all
+Protocol:all
+autonegotiate:check
+```
+```
+Ahora configuramos la static route
+FG-B
+subnet:172.21.0.0/24
+Interface:Site-A (el que se creo anteriormente)
+```
+### Configuración de la policy en el FG-B
+
+```
+FG-B IDA
+Name:To Site-A
+Incoming:LAN(Port4)
+Outcoming:Site-A
+all
+all
+all
+
+NAT:Enable
+IP Pool Configuration: IPSEC-SITE-B
+el secreto está aquí, en vez de usar use outgoing interface addres, debemos seleccionar use Dynamic IP POOL-> Create New IP Pool->Fixed port Range
+Name: IPSEC-SITE-B
+Type:Fixed Port Range:172.22.0.1-172.22.0.254
+Internal IP Range:10.0.1.1-10.0.1.254
+ARP:enable
+```
+```
+FG-B Vuelta
+Name:From Site-A
+Incoming:LAN(Port4)
+Outcoming:Site-A (debeía ya estar en verde o levatado el servicio)
+Source:all
+Destination:create->Virtual IP Server
+->Name:IPSEC VIP
+Interface:Site-A
+Type:Static NAt
+External IP address/range:172.22.0.1-172.22.0.254
+Map to:10.0.1.1(solo hay que poner la primera IP, el sistema lo llena por dafault hasta el 254)
+optional Filter:disable
+Port forwarding:disable
+botón ok
+Service:all
+
+NAT:disable
+```
+
+
+### Ahora lo mismo se hace en el FG-A
+```
+FG-A
+Ahora nos vamos a IPsec Wizard->custom
+Name:Site-B
+Remote Gateway:Static IP Address
+IP Address:60.89.123.1
+Interface:ISP-1(Port2)
+NAT Transversal:Disable
+Dead Peer Detection:On Demand
+DPD retry count:3
+DPD retry:20
+Pre-sharedkey:1234567
+Version:1
+Mode: Main(ID Protection)
+DES/MD5:2
+
+Local Address: subnet: 172.21.0.0/24 (SITE A)
+Remote Address:subnet 172.22.0.0/24 (SITE B)
+
+Advance:
+DES/MD5:2
+Enable Replay Detection:check
+Enable perfect forward secrecy (PFS):check
+Local Port:all
+Remote port :all
+Protocol:all
+autonegotiate:check
+```
+```
+### Ahora configuramos la static route
+FG-A
+subnet:172.22.0.0/24
+Interface:Site-B (el que se creo anteriormente)
+```
+### Ahora nos vamos a las policy del FG-A
+
+```
+FG-A IDA
+Name:To Site-B
+Incoming:LAN(Port4)
+Outcoming:Site-B
+all
+all
+all
+
+NAT:Enable
+IP Pool Configuration: IPSEC SITE A
+el secreto está aquí, en vez de usar use outgoing interface addres, debemos seleccionar use Dynamic IP POOL-> Create New IP Pool
+Name: IPSEC SITE-A
+Type:Fixed Port Range:172.21.0.1-172.21.0.254
+Internal IP Range:10.0.1.1-10.0.1.254
+ARP:enable
+```
+```
+FG-A Vuelta
+Name:From Site-B 
+Incoming:LAN(Port4)
+Outcoming:Site-B(ya debería estar en verde o habilitado el servicio)
+Source:all
+Destination:create->Virtual IP Server
+->Name:IPSEC VIP
+Interface:Site-B
+Type:Static NAT
+External IP address/range:172.21.0.1-172.21.0.254
+Map to:10.0.1.1(solo hay que poner la primera IP, el sistema lo llena por dafault hasta el 254)
+optional Filter:disable
+Port forwarding:disable
+botón ok
+
+Service:all
+
+NAT:disable
+
+```
+
