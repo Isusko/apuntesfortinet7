@@ -3775,3 +3775,215 @@ NAT:disable
 
 ```
 
+## Central NAT
+
+Es una opción que podemos utilizar por separado y ya no estária en las Firewall policy como NAT:Enable/Disable, esto raramente se utiliza en la vida real, para activarlo nos vamos a 
+
+```
+Activar Central NAT
+System->Setting->y tenemos que buscar y habilitar la opció que dice CENTRAL SNAT
+
+O a través del del CLI:
+
+SITE-A # config system set
+SITE-A (settings) # set central-nat enable 
+SITE-A (settings) # end
+SITE-A # 
+```
+
+![164](165.png)
+
+## Traffic Shapers
+
+Acnho de banda de internet.
+
+![165](166.png)
+
+```
+Policy&Objects->Traffic Shaping
+
+Podemos escoger estas 3 opciones:
+1.Traffic Shappers
+2.Traffic Shaping Policies
+3.Traffic Shaping Profiles
+
+De los cuales solo veremos la 1 y 2 en el que creamos en 1 y establecemos parametros en el 2
+```
+Para este ejemplo vamos a trabajar con el FG-B y el equipo windows 7, en el equipo windows revisaremos el ancho de banda a tráves de fast.com que nos da:
+Subida:17.53 Bajada:9.23
+
+Ingresamos a Traffic Shaper y click en crear uno nuevo
+```
+Type:Shared
+Name INTERNET-6Mb
+Traffic Priority;High
+Bandwidth Unit:Mbps.
+Maximun Bandwidth:6Mbps.
+Garanted Bandwidth:2
+
+Click en ok
+```
+Ahora nos vamos a Traficc Shaping Policy y click en crear uno nuevo
+```
+Name:Internet
+Source:all
+Destinatation:all
+Service:all
+Application:(en la vida real se puede aplicar uno)
+URL Category:(en la vida real se puede aplicar uno, requiere licencia)
+Outping Interface: SDWAN-Internet
+Apply Shaper: enable
+Shared Shaper:Internet-6 Mbps.(se creo en un paso anterior, bajada)
+Reverse Shaper:Internet-6 Mbps.(subida)
+click en ok
+
+Tendremos como resultado:
+Bajada:5.23 y Subida: 4.60 Mbps.
+```
+
+Si revismos el windows 7 podemos comprobar que se quedo con 6 Mbps de subida y bajada.
+Nota: Aquí podemos limitar el ancho de banda internamente y no solo para el control de internet
+
+Ahora creamos y aplicamos el otro tipo Per IP-Shaper
+```
+Create New->
+Type:Pre Ip Shaper
+Name:PER-IP 6M
+
+Bandwidth:Mbps.
+Maximum Bandwidth:6Mbps.
+Max concurrer connections:10 (esto significa que ahora solo 10 sesiones o saltos al hacer la busqueda en internet, por eso es recomendable ponerle por ejemplo 50) 
+```
+
+Ahora nos vamos a Traficc Shaping Policy y click en crear uno nuevo
+```
+Name:Internet
+Source:all
+Destinatation:all
+Service:all
+Application:(en la vida real se puede aplicar uno)
+URL Category:(en la vida real se puede aplicar uno, requiere licencia)
+Outging Interface: SDWAN-Internet
+Apply Shaper: enable
+Per-IP Shaper:Per-IP 6M (la opción que creamos un paso anterior)
+
+click en ok
+
+Tendremos como resultado:
+Bajada:5.23 y Subida: 4.60 Mbps.
+```
+## Portal Cautivo en Fortinet
+Esta cofiguración solo funciona para el puerto que nos de salida a internet en este laboratio se hace todos a través del puerto 4.
+
+Primero tenemos que crear un usuairo y/o grupo con autenticación activa aquí no se puede usar la autenticación pasiva.
+```
+User&Authentication->user defitinition->crear usuario/password
+Elias
+Pass:1234567
+
+Ahora el grupo
+user Groups->Internet->Firewall y agregamos al gruupo al usuairo anterior
+```
+Ahora si activamos portal cautivo/Captive Portal
+
+```
+Interface->Puerto 4-> Activar Captive Portal-> en la autenticación del portal-> seleccionamos local->en user acces->Allow all
+user group:Internet  (grupo creado en paso anterior)
+Exempt Source:Podemos dar exepcioines localas
+Exempot destination/server: Por ejemplo google correo o office, aquí al ingresar a esos servios no nos solicitará contraseña
+
+Click en ok
+```
+### Habilitar Disclaimer
+```
+Esto se hace desde la firewall policy que nos da salida a internet y solo lo permite habilitarlo a tráves de la CLI.
+
+SITE-B # config firewall policy 
+
+SITE-B (policy) # show
+config firewall policy
+    edit 1
+        set name "INTERNET-SDWAN"
+        set uuid 3e1eb46a-abf3-51ed-1b08-5cf62ee2be4e
+        set srcintf "port4"
+        set dstintf "SD-WANInternet"
+        set action accept
+        set srcaddr "all"
+        set dstaddr "all"
+        set schedule "always"
+        set service "ALL"
+        set nat enable
+    next
+end
+
+SITE-B (policy) # edit 1
+
+
+
+SITE-B (1) # set disclaimer??
+enable     Enable user authentication disclaimer.
+disable    Disable user authentication disclaimer.
+ 
+SITE-B (1) # set disclaimer enable 
+
+SITE-B (1) # show
+config firewall policy
+    edit 1
+        set name "INTERNET-SDWAN"
+        set uuid 3e1eb46a-abf3-51ed-1b08-5cf62ee2be4e
+        set srcintf "port4"
+        set dstintf "SD-WANInternet"
+        set action accept
+        set srcaddr "all"
+        set dstaddr "all"
+        set schedule "always"
+        set service "ALL"
+        set nat enable
+        set disclaimer enable
+    next
+end
+
+SITE-B (1) # end
+
+```
+Este mensaje se puede modificar y también el logging
+system->Replacemente Msjs y hay una lista 
+Disc->disclaimer, Loggin Page : es una configuración
+HTML que podemos modificar
+ ![166](167.png)
+
+ ## Bloquear navegación a otros países
+
+ ```
+ Para esto tenemos que crear dos objetos
+
+ Policy&Objects->Address->Create New->
+ Name:China
+ Type:Geografico
+ Contry/Región:China(Seleccionamos cualquier país)
+
+ Ahora Creamos un grupo
+
+ Create New Group
+ Name:Países Bloqueados
+ Type:Group
+ Member: China(Creado en paso anterior)
+
+ ```
+ Ahora creamos una policy
+
+ ```
+Incoming:LAN4
+Outgoing:
+Source:
+Aquí podemos agregar cualquier equipo local o en este ejemplo se bloquean camaras:
+Name:h 10.0.1.14
+Ip:10.0.1.14/32
+
+
+Destination:Paises Bloqueados
+Service:all
+Action: Deny
+Log Violation Trafic:Enable
+
+ ```
