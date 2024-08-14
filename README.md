@@ -68,7 +68,7 @@
 
 # [33.Caso Práctico:IPSEC](/Temas/IPSEC.md)
 
-# [34.Acnho de banda de internet.](/Temas/Shapers.md)
+# [34.Ancho de banda de internet.](/Temas/Shapers.md)
 
 # [35.Portal Cautivo en Fortinet](/Temas/PortalCautivo.md)
 
