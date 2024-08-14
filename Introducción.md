@@ -1,6 +1,7 @@
 ![0](forti.jpg)
  Laboratorio Fortinet 7.0
-Estos son apuntes personales del curso Fortinet 7: De principiante a experto, impartido por Eduardo Nazareno Anselmi [Adquirir el curso aquí](https://www.udemy.com/course/fortinet-7-de-principiante-a-experto/)
+ 
+Estos son apuntes personales del curso Fortinet 7
 
 En este curso se require los siguientes programas para el laboratorio:
 * [GNS3](https://gns3.com/software) descargar la versión servidor y cliente
